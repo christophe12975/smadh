@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HydroClim Analyzer — Bassin de l'Ouémé</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1b2a; color: #e8f4f0; min-height: 100vh; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .header { background: linear-gradient(135deg, #0d3b2e 0%, #0d1b2a 100%); padding: 16px 20px; border-bottom: 1px solid #1a4a3a; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .app-label { font-size: 10px; letter-spacing: 0.15em; color: #4ecba0; text-transform: uppercase; font-weight: 600; }
+  .header-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn { background: none; border: none; color: #4ecba0; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; }
+  .icon-btn:hover { background: rgba(78,203,160,0.1); }
+  .back-btn { background: none; border: none; color: #4ecba0; font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; }
+  .back-btn:hover { background: rgba(78,203,160,0.1); }
+  .header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  .header p { font-size: 11px; color: #8ab5a5; margin-top: 2px; }
+
+  .bottom-nav { position: sticky; bottom: 0; background: #0d1b2a; border-top: 1px solid #1a4a3a; display: flex; padding: 8px 0 12px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.2s; }
+  .nav-item:hover { background: rgba(78,203,160,0.08); }
+  .nav-item.active .nav-icon { color: #4ecba0; }
+  .nav-item.active .nav-label { color: #4ecba0; }
+  .nav-icon { font-size: 20px; color: #4a6a5a; transition: color 0.2s; }
+  .nav-label { font-size: 9px; color: #4a6a5a; font-weight: 500; letter-spacing: 0.03em; transition: color 0.2s; }
+
+  .content { flex: 1; padding: 16px; background: #0f2030; overflow-y: auto; }
+
+  .card { background: #1a2f42; border: 1px solid #234055; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #e8f4f0; margin-bottom: 10px; }
+  .card-sub { font-size: 11px; color: #6a9080; margin-bottom: 8px; }
+
+  .auth-logo { text-align: center; padding: 24px 0 16px; }
+  .auth-logo .big { font-size: 44px; }
+  .auth-logo h2 { font-size: 20px; font-weight: 700; color: #4ecba0; margin-top: 6px; }
+  .auth-logo p { font-size: 11px; color: #6a9080; margin-top: 3px; }
+  .auth-tabs { display: flex; background: #0d2235; border-radius: 10px; padding: 3px; margin-bottom: 16px; }
+  .auth-tab { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; color: #6a9080; transition: all 0.2s; }
+  .auth-tab.active { background: #1a4a3a; color: #4ecba0; }
+  .input-group { margin-bottom: 12px; }
+  .input-group label { font-size: 12px; color: #8ab5a5; display: block; margin-bottom: 4px; }
+  .input-group input, .input-group select { width: 100%; background: #0d2235; border: 1px solid #234055; border-radius: 8px; padding: 10px 12px; color: #e8f4f0; font-size: 14px; outline: none; }
+  .input-group input:focus, .input-group select:focus { border-color: #4ecba0; }
+  .input-group select option { background: #0d2235; }
+  .input-error { border-color: #e06060 !important; }
+  .error-text { font-size: 11px; color: #e06060; margin-top: 4px; display: none; }
+  .error-text.show { display: block; }
+  .form-alert { background: rgba(220,80,80,0.1); border: 1px solid rgba(220,80,80,0.3); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #e06060; margin-bottom: 12px; display: none; }
+  .form-alert.show { display: block; }
+  .btn-primary { width: 100%; padding: 13px; background: linear-gradient(135deg, #0f6e56, #0a9e7a); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-danger { width: 100%; padding: 11px; background: rgba(220,80,80,0.1); color: #e06060; border: 1px solid rgba(220,80,80,0.3); border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+  .btn-danger:hover { background: rgba(220,80,80,0.2); }
+  .auth-link { text-align: center; font-size: 12px; color: #6a9080; margin-top: 12px; cursor: pointer; }
+  .auth-link span { color: #4ecba0; text-decoration: underline; }
+
+  .stat-card { background: linear-gradient(135deg, #0f6e56, #0a4a3a); border: none; }
+  .stat-card .label { font-size: 11px; color: #9fe1cb; }
+  .stat-card .value { font-size: 26px; font-weight: 700; color: #fff; margin: 4px 0; }
+  .stat-card .detail { font-size: 11px; color: #7dcfb0; }
+
+  .menu-item { cursor: pointer; transition: transform 0.15s; }
+  .menu-item:hover { transform: translateX(4px); }
+  .menu-item:hover .card { border-color: #4ecba0; }
+  .menu-row { display: flex; justify-content: space-between; align-items: center; }
+  .menu-info .title { font-size: 14px; font-weight: 600; color: #e8f4f0; }
+  .menu-info .desc { font-size: 11px; color: #6a9080; margin-top: 2px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(78,203,160,0.15); color: #4ecba0; }
+  .badge.alert { background: rgba(220,80,80,0.15); color: #e06060; }
+  .section-label { font-size: 10px; color: #4a6a5a; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 6px; }
+
+  .spearman-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .spearman-table th { color: #6a9080; font-weight: 500; padding: 6px 4px; text-align: center; border-bottom: 1px solid #234055; }
+  .spearman-table th:first-child { text-align: left; }
+  .spearman-table td { padding: 7px 4px; text-align: center; border-bottom: 1px solid #1a2f42; }
+  .spearman-table td:first-child { text-align: left; font-weight: 500; }
+  .sig { color: #4ecba0; font-weight: 700; }
+  .neg { color: #e06060; font-weight: 700; }
+  .ns { color: #4a6a5a; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .bar-label { font-size: 11px; color: #8ab5a5; width: 80px; flex-shrink: 0; text-align: right; }
+  .bar-track { flex: 1; height: 22px; background: #0d2235; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-size: 10px; font-weight: 700; }
+  .bar-pos { background: linear-gradient(90deg, #0f6e56, #4ecba0); color: #fff; }
+  .bar-neg { background: linear-gradient(90deg, #8b2020, #e06060); color: #fff; }
+
+  .stations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .station-item { background: #0d2235; border: 1px solid #234055; border-radius: 8px; padding: 8px 10px; font-size: 11px; color: #8ab5a5; cursor: pointer; }
+  .station-item.selected { border-color: #4ecba0; color: #4ecba0; background: rgba(78,203,160,0.08); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab { flex: 1; padding: 8px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #234055; background: #0d2235; color: #6a9080; text-align: center; transition: all 0.2s; }
+  .tab.active { border-color: #4ecba0; background: rgba(78,203,160,0.12); color: #4ecba0; }
+
+  .phase-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: #0d2235; border-radius: 10px; margin-bottom: 8px; }
+  .phase-arrow { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
+  .phase-info .pair { font-size: 12px; font-weight: 600; color: #e8f4f0; }
+  .phase-info .interp { font-size: 11px; color: #6a9080; margin-top: 2px; }
+
+  .alert-item { background: rgba(220,80,80,0.08); border: 1px solid rgba(220,80,80,0.3); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .alert-title { font-size: 13px; font-weight: 600; color: #e06060; }
+  .alert-detail { font-size: 11px; color: #9a6060; margin-top: 4px; }
+  .normal-item { background: rgba(78,203,160,0.06); border: 1px solid rgba(78,203,160,0.2); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .normal-title { font-size: 13px; font-weight: 600; color: #4ecba0; }
+
+  .cwt-visual { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+  .cwt-row { display: flex; height: 20px; }
+  .cwt-cell { flex: 1; }
+
+  .coh-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .coh-label { font-size: 11px; color: #8ab5a5; width: 60px; flex-shrink: 0; }
+  .coh-track { flex: 1; height: 18px; background: #0d2235; border-radius: 4px; overflow: hidden; }
+  .coh-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 6px; font-size: 10px; font-weight: 700; color: #fff; }
+
+  .interp-box { background: rgba(78,203,160,0.06); border-left: 3px solid #4ecba0; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 12px; line-height: 1.6; color: #c0d8d0; margin-top: 8px; }
+
+  .profile-avatar { width: 64px; height: 64px; background: linear-gradient(135deg,#0f6e56,#4ecba0); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 12px; }
+  .profile-name { text-align: center; font-size: 16px; font-weight: 700; color: #fff; }
+  .profile-role { text-align: center; font-size: 12px; color: #4ecba0; margin-top: 3px; }
+  .profile-email { text-align: center; font-size: 11px; color: #6a9080; margin-top: 2px; }
+
+  .user-row { display:flex; justify-content:space-between; align-items:center; padding:10px; background:#0d2235; border-radius:8px; margin-bottom:6px; }
+  .user-row .u-name { font-size:12px; font-weight:600; color:#e8f4f0; }
+  .user-row .u-meta { font-size:10px; color:#6a9080; }
+
+  /* ============================================================
+     ANIMATION BASSIN VERSANT — écran d'accueil
+     Réseau de rivières (motif dendritique) qui "coule" en boucle,
+     gouttes de pluie tombant vers les affluents, ondulations d'eau.
+     Pur CSS/SVG, aucun fichier externe requis.
+  ============================================================ */
+  .basin-hero { position: relative; width: 100%; height: 220px; overflow: hidden; border-radius: 0 0 24px 24px; background: radial-gradient(ellipse at 50% 0%, #123a2e 0%, #0d1b2a 70%); }
+  .basin-hero svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .basin-river { fill: none; stroke: #4ecba0; stroke-linecap: round; opacity: 0.55; }
+  .basin-river.flow {
+    stroke-dasharray: 6 10;
+    animation: basin-flow 3.5s linear infinite;
+  }
+  .basin-river.flow-slow { animation-duration: 5.5s; opacity: 0.35; }
+  .basin-river.flow-fast { animation-duration: 2.2s; opacity: 0.7; }
+  @keyframes basin-flow {
+    to { stroke-dashoffset: -160; }
+  }
+  .basin-drop {
+    position: absolute;
+    width: 3px; height: 10px;
+    background: linear-gradient(#9fe1cb, #4ecba0);
+    border-radius: 2px;
+    opacity: 0;
+    animation: basin-drop-fall linear infinite;
+  }
+  @keyframes basin-drop-fall {
+    0%   { transform: translateY(-10px); opacity: 0; }
+    10%  { opacity: 0.9; }
+    85%  { opacity: 0.6; }
+    100% { transform: translateY(190px); opacity: 0; }
+  }
+  .basin-ripple {
+    position: absolute;
+    width: 6px; height: 6px;
+    border: 1.5px solid #4ecba0;
+    border-radius: 50%;
+    opacity: 0;
+    animation: basin-ripple-grow linear infinite;
+  }
+  @keyframes basin-ripple-grow {
+    0%   { transform: scale(0.3); opacity: 0.7; }
+    100% { transform: scale(4.5); opacity: 0; }
+  }
+  .basin-label {
+    position: absolute; bottom: 12px; left: 0; right: 0;
+    text-align: center; font-size: 10px; letter-spacing: 0.1em;
+    color: #7dcfb0; text-transform: uppercase; opacity: 0.75;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .basin-river.flow, .basin-drop, .basin-ripple { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+
+// ============================================================
+// CONFIGURATION SUPABASE — remplace ces deux valeurs par les
+// tiennes (Project Settings > API dans ton tableau de bord Supabase)
+// ============================================================
+const SUPABASE_URL = "https://mfaoeahoxexkleilapaw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Hw_W5Y0o7qFBfY0GwwRYVA_QP7VWBpJ";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
+<script>
+
+// ============================================================
+// DONNÉES
+// ============================================================
+const STATIONS = [
+  "ABOMEY","BANTÈ","BASSILA","BEMBÈRÈKÈ","BÉTÉROU",
+  "BIRNI","BOHICON","BONOU","DASSA","DJOUGOU",
+  "INA","KÉTOU","KOUANDÉ","NIKKI","OKPARA",
+  "OUÈSSÈ","PARAKOU","PARTAGO","PÉNÉSSOULOU","POBÈ",
+  "SAVALOU","SAVÈ","TCHAOUROU","TOUI","ZAGNANADO"
+];
+
+const SPEARMAN_DATA = [
+  { indice:"PRCPTOT", nom:"Précip. annuelle totale",
+    Q5:{rho:-0.065,sig:false}, Q50:{rho:0.403,sig:true}, Q95:{rho:0.387,sig:true} },
+  { indice:"Rx1day", nom:"Précip. max 1 jour",
+    Q5:{rho:-0.167,sig:false}, Q50:{rho:0.116,sig:false}, Q95:{rho:0.362,sig:true} },
+  { indice:"Rx5day", nom:"Précip. max 5 jours",
+    Q5:{rho:-0.241,sig:false}, Q50:{rho:0.247,sig:false}, Q95:{rho:0.532,sig:true} },
+  { indice:"R10mm", nom:"Jours pluie > 10mm",
+    Q5:{rho:-0.077,sig:false}, Q50:{rho:0.369,sig:true}, Q95:{rho:0.348,sig:false} },
+  { indice:"R20mm", nom:"Jours pluie > 20mm",
+    Q5:{rho:-0.090,sig:false}, Q50:{rho:0.343,sig:false}, Q95:{rho:0.312,sig:false} },
+  { indice:"SDII", nom:"Intensité pluie quotidienne",
+    Q5:{rho:-0.045,sig:false}, Q50:{rho:0.231,sig:false}, Q95:{rho:0.296,sig:false} },
+  { indice:"CDD", nom:"Jours secs consécutifs",
+    Q5:{rho:-0.132,sig:false}, Q50:{rho:-0.497,sig:true}, Q95:{rho:0.243,sig:false} },
+  { indice:"CWD", nom:"Jours humides consécutifs",
+    Q5:{rho:-0.171,sig:false}, Q50:{rho:0.119,sig:false}, Q95:{rho:0.305,sig:false} },
+  { indice:"SU", nom:"Jours chauds (>25°C)",
+    Q5:{rho:0.007,sig:false}, Q50:{rho:-0.063,sig:false}, Q95:{rho:0.222,sig:false} },
+  { indice:"TR", nom:"Nuits tropicales (>20°C)",
+    Q5:{rho:0.457,sig:true}, Q50:{rho:0.481,sig:true}, Q95:{rho:0.015,sig:false} },
+  { indice:"TN10p", nom:"Nuits fraîches (10e pct)",
+    Q5:{rho:-0.220,sig:false}, Q50:{rho:-0.245,sig:false}, Q95:{rho:0.073,sig:false} },
+  { indice:"TX10p", nom:"Jours frais (10e pct)",
+    Q5:{rho:0.036,sig:false}, Q50:{rho:-0.151,sig:false}, Q95:{rho:0.022,sig:false} },
+  { indice:"TN90p", nom:"Nuits chaudes (90e pct)",
+    Q5:{rho:0.098,sig:false}, Q50:{rho:0.303,sig:false}, Q95:{rho:0.184,sig:false} },
+  { indice:"TX90p", nom:"Jours chauds (90e pct)",
+    Q5:{rho:-0.051,sig:false}, Q50:{rho:0.055,sig:false}, Q95:{rho:0.063,sig:false} },
+  { indice:"WSDI", nom:"Vagues de chaleur",
+    Q5:{rho:-0.261,sig:false}, Q50:{rho:0.059,sig:false}, Q95:{rho:0.006,sig:false} },
+  { indice:"CSDI", nom:"Vagues de froid",
+    Q5:{rho:-0.502,sig:true}, Q50:{rho:-0.515,sig:true}, Q95:{rho:0.153,sig:false} },
+];
+
+const INDICES_SIGNIFICATIFS = [
+  { indice:"TR",      debit:"Q5",  rho:0.457,  phase:"→", interp:"En phase — nuits chaudes → étiages élevés" },
+  { indice:"CSDI",    debit:"Q5",  rho:-0.502, phase:"←", interp:"Antiphase — vagues de froid → étiages sévères" },
+  { indice:"PRCPTOT", debit:"Q50", rho:0.403,  phase:"→", interp:"En phase — pluie totale → débit médian élevé" },
+  { indice:"CDD",     debit:"Q50", rho:-0.497, phase:"↓", interp:"Antiphase — sécheresse → débit médian faible" },
+  { indice:"TR",      debit:"Q50", rho:0.481,  phase:"→", interp:"En phase — nuits chaudes → débit médian élevé" },
+  { indice:"CSDI",    debit:"Q50", rho:-0.515, phase:"←", interp:"Antiphase — vagues de froid → débit médian faible" },
+  { indice:"PRCPTOT", debit:"Q95", rho:0.387,  phase:"↘", interp:"En phase avec léger retard — pluie → crue" },
+  { indice:"Rx1day",  debit:"Q95", rho:0.362,  phase:"→", interp:"En phase — pluie max 1j → crue extrême" },
+  { indice:"Rx5day",  debit:"Q95", rho:0.532,  phase:"→", interp:"En phase — pluie max 5j → crue (plus fort)" },
+];
+
+const STATS_DEBIT = { moyenne:203.19, ecart_type:296.11, min:0.81, max:1085 };
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  screen:"accueil",
+  authTab:"login",
+  role:"scientifique",
+  user:null,
+  selectedDebit:"Q5",
+  selectedStation:"BONOU",
+  os1Tab:"tableau",
+  os3Tab:"xwt",
+  navActive:"accueil",
+  prevScreen:null,
+  loading:false,
+  usersList:[]
+};
+
+function setState(newState) {
+  if(newState.screen && newState.screen !== state.screen) {
+    state.prevScreen = state.screen;
+  }
+  state = { ...state, ...newState };
+  render();
+}
+
+function goBack() {
+  const prev = state.prevScreen || "dashboard";
+  setState({ screen: prev, prevScreen: null });
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function rhoDisplay(rho, sig) {
+  const cls = !sig ? "ns" : rho > 0 ? "sig" : "neg";
+  return `<span class="${cls}">${rho.toFixed(2)}${sig?"*":""}</span>`;
+}
+function barWidth(rho) { return Math.abs(rho) * 100; }
+
+// ============================================================
+// VALIDATION + STOCKAGE DES COMPTES
+// ============================================================
+// Règles de validation appliquées à l'inscription :
+// - nom : obligatoire, au moins 3 caractères
+// - email : obligatoire, format valide (x@y.z)
+// - identifiant : obligatoire, au moins 3 caractères, doit être UNIQUE
+// - mot de passe : obligatoire, au moins 6 caractères
+// - institution : obligatoire
+function validateRegistration({nom, email, pass, passConfirm, inst}) {
+  const errors = {};
+  if(!nom || nom.trim().length < 3) errors.nom = "Le nom complet doit contenir au moins 3 caractères.";
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!email || !emailRe.test(email.trim())) errors.email = "Adresse email invalide.";
+  if(!pass || pass.length < 6) errors.pass = "Le mot de passe doit contenir au moins 6 caractères.";
+  if(!passConfirm) errors.passConfirm = "Merci de confirmer le mot de passe.";
+  else if(pass && passConfirm && pass !== passConfirm) errors.passConfirm = "Les mots de passe ne correspondent pas.";
+  if(!inst || inst.trim().length < 2) errors.inst = "L'institution est obligatoire.";
+  return errors;
+}
+
+function showFieldError(fieldId, message) {
+  const input = document.getElementById(fieldId);
+  const err = document.getElementById(fieldId + "-error");
+  if(input) input.classList.add("input-error");
+  if(err) { err.textContent = message; err.classList.add("show"); }
+}
+function clearFieldErrors(ids) {
+  ids.forEach(id => {
+    const input = document.getElementById(id);
+    const err = document.getElementById(id + "-error");
+    if(input) input.classList.remove("input-error");
+    if(err) { err.textContent = ""; err.classList.remove("show"); }
+  });
+}
+function showFormAlert(id, message) {
+  const box = document.getElementById(id);
+  if(box) { box.textContent = message; box.classList.add("show"); }
+}
+function hideFormAlert(id) {
+  const box = document.getElementById(id);
+  if(box) { box.classList.remove("show"); }
+}
+
+// ============================================================
+// AUTHENTIFICATION SUPABASE
+// ============================================================
+// Supabase Auth gère lui-même le hachage sécurisé des mots de passe
+// (jamais stocké en clair, jamais visible même par toi). La table
+// "profiles" ne contient que les infos complémentaires (nom, rôle...)
+// et est protégée par des règles RLS : chaque utilisateur ne peut lire
+// que SA PROPRE ligne. Voir setup_supabase.sql pour le détail.
+//
+// Pour voir la liste complète des comptes, utilise le tableau de bord
+// Supabase (Table Editor > profiles), qui est protégé par ton propre
+// login Supabase — pas par ce code, qui est toujours visible publiquement.
+
+// Inscription : crée uniquement le compte d'authentification. Le profil
+// (nom, institution, role) sera créé automatiquement a la premiere connexion
+// reussie, une fois l'email confirme (voir loginAccount). Ceci car, tant que
+// l'email n'est pas confirme, il n'y a pas de session active et la regle RLS
+// interdirait l'insertion dans "profiles" immediatement apres l'inscription.
+async function registerAccount({nom, email, identifiant, pass, inst, role}) {
+  const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+    email: email,
+    password: pass
+  });
+  if(authError) throw new Error(traduireErreurSupabase(authError.message));
+
+  // on garde les infos du profil en attente, le temps que l'email soit confirme
+  sessionStorage.setItem('pending_profile_' + email, JSON.stringify({ nom, identifiant, inst, role }));
+
+  return authData.user;
+}
+
+// Connexion : Supabase verifie identifiant/mot de passe cote serveur.
+// Si c'est la toute premiere connexion (juste apres confirmation email),
+// le profil n'existe pas encore : on le cree ici a partir des infos
+// mises en attente lors de l'inscription.
+async function loginAccount(email, pass) {
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: email,
+    password: pass
+  });
+  if(error) throw new Error(traduireErreurSupabase(error.message));
+
+  let { data: profile, error: profileError } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', data.user.id)
+    .single();
+
+  if(profileError) {
+    // pas encore de profil -> on le cree maintenant avec les infos en attente
+    const pendingRaw = sessionStorage.getItem('pending_profile_' + email);
+    const pending = pendingRaw ? JSON.parse(pendingRaw) : { nom: email.split("@")[0], identifiant: email.split("@")[0], inst: "Non renseignée", role: "scientifique" };
+
+    const { data: newProfile, error: insertError } = await supabaseClient
+      .from('profiles')
+      .insert({ id: data.user.id, identifiant: pending.identifiant, nom: pending.nom, institution: pending.inst, role: pending.role })
+      .select()
+      .single();
+
+    if(insertError) throw new Error("Connexion réussie mais échec de création du profil : " + insertError.message);
+
+    sessionStorage.removeItem('pending_profile_' + email);
+    profile = newProfile;
+  }
+
+  return { ...profile, email: data.user.email };
+}
+
+function traduireErreurSupabase(msg) {
+  if(msg.includes("already registered")) return "Cet email est déjà utilisé.";
+  if(msg.includes("Invalid login credentials")) return "Email ou mot de passe incorrect.";
+  if(msg.includes("Password should be")) return "Le mot de passe doit contenir au moins 6 caractères.";
+  return msg;
+}
+
+// ============================================================
+// BOTTOM NAV
+// ============================================================
+function bottomNav() {
+  if(!state.user) return "";
+  const items = [
+    { id:"dashboard", icon:"🏠", label:"Accueil" },
+    { id:"os1",       icon:"📊", label:"OS1" },
+    { id:"os2",       icon:"〰️", label:"OS2" },
+    { id:"os3",       icon:"🔗", label:"OS3" },
+    { id:"profil",    icon:"👤", label:"Profil" },
+  ];
+  return `<div class="bottom-nav">
+    ${items.map(it=>`
+    <div class="nav-item ${state.screen===it.id?'active':''}"
+         onclick="setState({screen:'${it.id}',navActive:'${it.id}'})">
+      <span class="nav-icon">${it.icon}</span>
+      <span class="nav-label">${it.label}</span>
+    </div>`).join("")}
+  </div>`;
+}
+
+// ============================================================
+// HEADER
+// ============================================================
+function header(title, sub, showBack=false, showMenu=false) {
+  return `<div class="header">
+    <div class="header-top">
+      <div class="app-label">SMADH · Ouémé</div>
+      <div class="header-actions">
+        ${showBack ? `<button class="back-btn" onclick="goBack()">← retour</button>` : ""}
+        ${showMenu && state.user ? `<button class="icon-btn" onclick="setState({screen:'alertes'})">🔔</button>` : ""}
+      </div>
+    </div>
+    <h1>${title}</h1>
+    ${sub ? `<p>${sub}</p>` : ""}
+  </div>`;
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+
+function screenAccueil() {
+  return `
+  <div class="basin-hero">
+    <svg viewBox="0 0 400 220" preserveAspectRatio="xMidYMid slice">
+      <!-- Reseau dendritique : rivieres se rejoignant vers un exutoire (bas) -->
+      <path class="basin-river flow-slow flow" d="M 40 10 Q 60 60, 90 90 T 140 140" stroke-width="1.5"/>
+      <path class="basin-river flow-slow flow" d="M 100 5 Q 110 50, 130 90 T 150 140" stroke-width="1.5"/>
+      <path class="basin-river flow flow" d="M 200 0 Q 195 60, 190 100 T 190 150" stroke-width="2"/>
+      <path class="basin-river flow flow" d="M 260 10 Q 240 55, 220 95 T 195 150" stroke-width="1.5"/>
+      <path class="basin-river flow-slow flow" d="M 330 15 Q 300 60, 270 100 T 210 150" stroke-width="1.5"/>
+      <path class="basin-river flow-slow flow" d="M 360 40 Q 320 70, 280 110 T 215 155" stroke-width="1.2"/>
+      <path class="basin-river flow-fast flow" d="M 140 140 Q 165 155, 190 150" stroke-width="2.5"/>
+      <path class="basin-river flow-fast flow" d="M 190 150 Q 200 165, 205 155" stroke-width="2.5"/>
+      <path class="basin-river flow-fast flow" d="M 205 155 Q 215 190, 200 220" stroke-width="3.5"/>
+      <!-- Lignes de niveau (topographie), statiques, discretes -->
+      <ellipse cx="200" cy="90" rx="150" ry="70" fill="none" stroke="#1a4a3a" stroke-width="1" opacity="0.4"/>
+      <ellipse cx="200" cy="90" rx="100" ry="46" fill="none" stroke="#1a4a3a" stroke-width="1" opacity="0.35"/>
+      <ellipse cx="200" cy="90" rx="50" ry="24" fill="none" stroke="#1a4a3a" stroke-width="1" opacity="0.3"/>
+    </svg>
+    <div class="basin-drop" style="left:15%; animation-duration:2.1s; animation-delay:0s;"></div>
+    <div class="basin-drop" style="left:32%; animation-duration:2.6s; animation-delay:0.6s;"></div>
+    <div class="basin-drop" style="left:48%; animation-duration:1.9s; animation-delay:1.1s;"></div>
+    <div class="basin-drop" style="left:63%; animation-duration:2.4s; animation-delay:0.3s;"></div>
+    <div class="basin-drop" style="left:78%; animation-duration:2.2s; animation-delay:0.9s;"></div>
+    <div class="basin-drop" style="left:87%; animation-duration:2.8s; animation-delay:1.4s;"></div>
+    <div class="basin-ripple" style="left:48%; bottom:25px; animation-duration:2.5s; animation-delay:0s;"></div>
+    <div class="basin-ripple" style="left:48%; bottom:25px; animation-duration:2.5s; animation-delay:1.25s;"></div>
+    <div class="basin-label">Bassin versant de l'Ouémé · Simulation du réseau hydrographique</div>
+  </div>
+  ${header("HydroClim Analyzer","Bassin versant de l'Ouémé à Bonou")}
+  <div class="content">
+    <div style="text-align:center;padding:10px 0 20px;">
+      <div style="font-size:18px;font-weight:700;color:#fff;">Bienvenue</div>
+      <div style="font-size:12px;color:#6a9080;margin-top:6px;line-height:1.6;">
+        Outil d'analyse des relations entre<br>
+        extrêmes climatiques et débits<br>
+        <span style="color:#4ecba0;">Bénin · 1991–2020</span>
+      </div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#0f3b2e,#0d2235);">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;font-size:11px;">
+        <div><div style="font-size:20px;">📍</div><div style="color:#4ecba0;font-weight:700;">25</div><div style="color:#6a9080;">Stations</div></div>
+        <div><div style="font-size:20px;">📈</div><div style="color:#4ecba0;font-weight:700;">16</div><div style="color:#6a9080;">Indices ETCCDI</div></div>
+        <div><div style="font-size:20px;">💧</div><div style="color:#4ecba0;font-weight:700;">30</div><div style="color:#6a9080;">Années</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Modules disponibles</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8ab5a5;">
+        <div>📊 <strong style="color:#4ecba0;">OS1</strong> — Indices extrêmes significatifs (Spearman)</div>
+        <div>〰️ <strong style="color:#4ecba0;">OS2</strong> — Variabilité temporelle (CWT)</div>
+        <div>🔗 <strong style="color:#4ecba0;">OS3</strong> — Relations de phase (XWT · WTC)</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="setState({screen:'auth'})">Connexion / Inscription</button>
+    <div style="text-align:center;font-size:11px;color:#4a6a5a;margin-top:10px;">
+      ENSGMM/UNSTIM · Mémoire Ingénieur · 2025
+    </div>
+  </div>`;
+}
+
+function screenAuth() {
+  return `
+  ${header("Authentification","Connectez-vous ou créez un compte", true)}
+  <div class="content">
+    <div class="auth-logo">
+      <div class="big">🔐</div>
+      <h2>HydroClim</h2>
+      <p>Bassin de l'Ouémé · Bonou · Bénin</p>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab ${state.authTab==='login'?'active':''}"
+           onclick="clearAuthAndSwitch('login')">Connexion</div>
+      <div class="auth-tab ${state.authTab==='register'?'active':''}"
+           onclick="clearAuthAndSwitch('register')">Inscription</div>
+    </div>
+
+    ${state.authTab==='login' ? `
+    <div class="card">
+      <div class="form-alert" id="login-alert"></div>
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="login-user" placeholder="Ex: vodounou@unstim.bj"/>
+        <div class="error-text" id="login-user-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Mot de passe</label>
+        <input type="password" id="login-pass" placeholder="••••••••"/>
+        <div class="error-text" id="login-pass-error"></div>
+      </div>
+      <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+    </div>
+    <div class="auth-link">
+      Pas encore de compte ?
+      <span onclick="clearAuthAndSwitch('register')">Créer un compte</span>
+    </div>` : `
+
+    <div class="card">
+      <div class="form-alert" id="reg-alert"></div>
+      <div class="input-group">
+        <label>Nom complet</label>
+        <input type="text" id="reg-nom" placeholder="Ex: Christophe VODOUNOU"/>
+        <div class="error-text" id="reg-nom-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="Ex: vodounou@unstim.bj"/>
+        <div class="error-text" id="reg-email-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Mot de passe</label>
+        <input type="password" id="reg-pass" placeholder="Minimum 6 caractères"/>
+        <div class="error-text" id="reg-pass-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Confirmer le mot de passe</label>
+        <input type="password" id="reg-pass-confirm" placeholder="Ressaisir le mot de passe"/>
+        <div class="error-text" id="reg-pass-confirm-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Institution</label>
+        <input type="text" id="reg-inst" placeholder="Ex: ENSGMM/UNSTIM Abomey"/>
+        <div class="error-text" id="reg-inst-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Rôle</label>
+        <select id="reg-role">
+          <option value="scientifique">Scientifique</option>
+          <option value="administrateur">Administrateur</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="reg-btn" onclick="doRegister()">Créer mon compte</button>
+    </div>
+    <div class="auth-link">
+      Déjà un compte ?
+      <span onclick="clearAuthAndSwitch('login')">Se connecter</span>
+    </div>`}
+  </div>`;
+}
+
+function clearAuthAndSwitch(tab) {
+  setState({authTab:tab});
+}
+
+// ------------------------------------------------------------
+// CONNEXION : verifie reellement l'identifiant + mot de passe
+// stockes lors de l'inscription. Refuse si le compte n'existe
+// pas ou si le mot de passe ne correspond pas.
+// ------------------------------------------------------------
+async function doLogin() {
+  hideFormAlert("login-alert");
+  clearFieldErrors(["login-user","login-pass"]);
+
+  const email = (document.getElementById("login-user")?.value || "").trim();
+  const pass = document.getElementById("login-pass")?.value || "";
+
+  let hasError = false;
+  if(!email) { showFieldError("login-user","L'email est obligatoire."); hasError = true; }
+  if(!pass) { showFieldError("login-pass","Le mot de passe est obligatoire."); hasError = true; }
+  if(hasError) return;
+
+  const btn = document.getElementById("login-btn");
+  if(btn) { btn.disabled = true; btn.textContent = "Connexion en cours..."; }
+
+  try {
+    const profile = await loginAccount(email, pass);
+    setState({
+      user: { nom: profile.nom, role: profile.role, email: profile.email, institution: profile.institution, identifiant: profile.identifiant },
+      screen: "dashboard"
+    });
+  } catch(e) {
+    showFormAlert("login-alert", e.message);
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = "Se connecter"; }
+  }
+}
+
+// ------------------------------------------------------------
+// INSCRIPTION : valide tous les champs, refuse si l'identifiant
+// existe deja, puis enregistre le compte dans le stockage
+// persistant (voir note de securite plus haut).
+// ------------------------------------------------------------
+async function doRegister() {
+  hideFormAlert("reg-alert");
+  clearFieldErrors(["reg-nom","reg-email","reg-pass","reg-pass-confirm","reg-inst"]);
+
+  const nom  = document.getElementById("reg-nom")?.value || "";
+  const email= document.getElementById("reg-email")?.value || "";
+  const pass = document.getElementById("reg-pass")?.value || "";
+  const passConfirm = document.getElementById("reg-pass-confirm")?.value || "";
+  const inst = document.getElementById("reg-inst")?.value || "";
+  const role = document.getElementById("reg-role")?.value || "scientifique";
+
+  const errors = validateRegistration({nom, email, pass, passConfirm, inst});
+  if(Object.keys(errors).length > 0) {
+    if(errors.nom) showFieldError("reg-nom", errors.nom);
+    if(errors.email) showFieldError("reg-email", errors.email);
+    if(errors.pass) showFieldError("reg-pass", errors.pass);
+    if(errors.passConfirm) showFieldError("reg-pass-confirm", errors.passConfirm);
+    if(errors.inst) showFieldError("reg-inst", errors.inst);
+    showFormAlert("reg-alert", "Merci de corriger les champs indiqués ci-dessous.");
+    return;
+  }
+
+  // identifiant genere automatiquement a partir de l'email (partie avant @)
+  // + suffixe aleatoire pour garantir l'unicite sans le demander a l'utilisateur
+  const identifiant = email.trim().split("@")[0] + "_" + Math.random().toString(36).slice(2,6);
+
+  const btn = document.getElementById("reg-btn");
+  if(btn) { btn.disabled = true; btn.textContent = "Création en cours..."; }
+
+  try {
+    await registerAccount({
+      nom: nom.trim(),
+      email: email.trim(),
+      identifiant: identifiant,
+      pass: pass,
+      inst: inst.trim(),
+      role: role
+    });
+
+    showFormAlert("reg-alert", "");
+    hideFormAlert("reg-alert");
+    setState({ screen: "auth", authTab: "login" });
+    // Avec la confirmation email activee, l'utilisateur doit cliquer sur le lien
+    // recu par mail avant de pouvoir se connecter. On l'informe ici.
+    setTimeout(() => {
+      showFormAlert("login-alert", "Compte créé ! Vérifie ta boîte mail et clique sur le lien de confirmation avant de te connecter.");
+    }, 50);
+  } catch(e) {
+    console.error("Erreur inscription:", e);
+    showFormAlert("reg-alert", e.message);
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
+  }
+}
+
+async function doLogout() {
+  if(confirm("Voulez-vous vraiment vous déconnecter ?")) {
+    await supabaseClient.auth.signOut();
+    setState({ user: null, screen: "accueil" });
+  }
+}
+
+function screenDashboard() {
+  return `
+  ${header("Tableau de bord", `Bienvenue, ${state.user?.nom?.split(" ")[0] || "Utilisateur"}`, false, true)}
+  <div class="content">
+    <div class="card stat-card">
+      <div class="label">Indice le plus influent sur Q₉₅</div>
+      <div class="value">Rx5day</div>
+      <div class="detail">ρ = +0.532 · Précipitations max sur 5 jours</div>
+    </div>
+    <div class="card stat-card" style="background:linear-gradient(135deg,#4a1a1a,#2a0d0d);">
+      <div class="label">Indice le plus influent sur Q₅</div>
+      <div class="value" style="color:#e06060;">CSDI</div>
+      <div class="detail" style="color:#c08080;">ρ = −0.502 · Vagues de froid (antiphase)</div>
+    </div>
+
+    ${state.user?.role==='administrateur' ? `
+    <div class="section-label">Administration</div>
+    <div class="menu-item" onclick="setState({screen:'stations',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Gestion des stations</div>
+          <div class="desc">25 pluviométriques · 4 synoptiques</div>
+        </div><div class="badge">M1</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'import',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Import des données</div>
+          <div class="desc">Charger un nouveau jeu de données</div>
+        </div><div class="badge">M2</div>
+      </div></div>
+    </div>
+    <div class="card" style="background:rgba(78,203,160,0.06);border:1px dashed #234055;">
+      <div style="font-size:11px;color:#6a9080;line-height:1.6;">
+        💡 La liste complète des comptes enregistrés se consulte dans le
+        <strong style="color:#4ecba0;">tableau de bord Supabase</strong> (Table Editor → profiles),
+        protégé par ton propre login — pas dans cette application.
+      </div>
+    </div>
+    <div class="section-label">Analyses</div>` :
+    `<div class="section-label">Modules d'analyse</div>`}
+
+    <div class="menu-item" onclick="setState({screen:'os1',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Indices extrêmes significatifs</div>
+          <div class="desc">Corrélation de Spearman · 16 indices ETCCDI</div>
+        </div><div class="badge">OS1</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'os2',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Variabilité temporelle</div>
+          <div class="desc">Transformée en ondelettes continues (CWT)</div>
+        </div><div class="badge">OS2</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'os3',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Relations de phase</div>
+          <div class="desc">XWT · Cohérence en ondelettes (WTC)</div>
+        </div><div class="badge">OS3</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'alertes',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Alertes hydroclimatiques</div>
+          <div class="desc">2 seuils dépassés détectés</div>
+        </div><div class="badge alert">⚠ 2</div>
+      </div></div>
+    </div>
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenOS1() {
+  return `
+  ${header("Indices significatifs","Corrélation de Spearman · n=30 · α=0.05", true)}
+  <div class="content">
+    <div class="tabs">
+      <div class="tab ${state.os1Tab==='tableau'?'active':''}" onclick="setState({os1Tab:'tableau'})">Tableau</div>
+      <div class="tab ${state.os1Tab==='barre'?'active':''}" onclick="setState({os1Tab:'barre'})">Classement</div>
+      <div class="tab ${state.os1Tab==='selec'?'active':''}" onclick="setState({os1Tab:'selec'})">Sélectionnés</div>
+    </div>
+
+    ${state.os1Tab==='tableau' ? `
+    <div class="card">
+      <div class="card-title">Matrice 16 × 3</div>
+      <div class="card-sub">* = significatif (p &lt; 0.05)</div>
+      <div style="overflow-x:auto;">
+      <table class="spearman-table">
+        <tr><th>Indice</th><th>Q₅</th><th>Q₅₀</th><th>Q₉₅</th></tr>
+        ${SPEARMAN_DATA.map(d=>`<tr>
+          <td>${d.indice}</td>
+          <td>${rhoDisplay(d.Q5.rho,d.Q5.sig)}</td>
+          <td>${rhoDisplay(d.Q50.rho,d.Q50.sig)}</td>
+          <td>${rhoDisplay(d.Q95.rho,d.Q95.sig)}</td>
+        </tr>`).join("")}
+      </table></div>
+    </div>` : ""}
+
+    ${state.os1Tab==='barre' ? `
+    <div class="tabs" style="margin-bottom:8px;">
+      <div class="tab ${state.selectedDebit==='Q5'?'active':''}" onclick="setState({selectedDebit:'Q5'})">Q₅</div>
+      <div class="tab ${state.selectedDebit==='Q50'?'active':''}" onclick="setState({selectedDebit:'Q50'})">Q₅₀</div>
+      <div class="tab ${state.selectedDebit==='Q95'?'active':''}" onclick="setState({selectedDebit:'Q95'})">Q₉₅</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Classement — ${state.selectedDebit}</div>
+      ${[...SPEARMAN_DATA]
+        .sort((a,b)=>Math.abs(b[state.selectedDebit].rho)-Math.abs(a[state.selectedDebit].rho))
+        .slice(0,8).map(d=>{
+          const v=d[state.selectedDebit];
+          return `<div class="bar-row">
+            <div class="bar-label">${d.indice}</div>
+            <div class="bar-track">
+              <div class="bar-fill ${v.rho>0?'bar-pos':'bar-neg'}" style="width:${barWidth(v.rho)}%">
+                ${v.rho.toFixed(2)}${v.sig?"*":""}
+              </div>
+            </div></div>`;
+        }).join("")}
+    </div>` : ""}
+
+    ${state.os1Tab==='selec' ? `
+    <div class="card">
+      <div class="card-title">6 indices sélectionnés</div>
+      <div class="card-sub">Shapiro-Wilk + analyse de multicolinéarité</div>
+      <div class="section-label">Précipitations (4)</div>
+      ${["PRCPTOT","Rx1day","Rx5day","CDD"].map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#0d2235;border-radius:8px;margin-bottom:6px;">
+        <span style="color:#4ecba0;font-weight:600;font-size:13px;">${i}</span>
+        <span style="color:#8ab5a5;font-size:11px;">${SPEARMAN_DATA.find(d=>d.indice===i)?.nom}</span>
+      </div>`).join("")}
+      <div class="section-label" style="margin-top:10px;">Températures (2)</div>
+      ${["TR","CSDI"].map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#0d2235;border-radius:8px;margin-bottom:6px;">
+        <span style="color:#e0a060;font-weight:600;font-size:13px;">${i}</span>
+        <span style="color:#8ab5a5;font-size:11px;">${SPEARMAN_DATA.find(d=>d.indice===i)?.nom}</span>
+      </div>`).join("")}
+    </div>` : ""}
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenOS2() {
+  const colors=["#0d3b2e","#0f5040","#1a7a5a","#2aaa7a","#4ecba0","#9fe1cb","#ffcc66","#ffaa33","#ff7733","#e03030"];
+  const cwt={
+    Q5:[[2,3,4,5,4,3,4,5,6,7,8,8,7,6,5,6,7,8,7,6],[1,2,3,4,3,2,3,4,5,6,7,7,6,5,4,5,6,7,6,5],[1,1,2,3,2,1,2,3,4,5,6,6,5,4,3,4,5,6,5,4]],
+    Q50:[[1,2,3,4,5,6,7,8,9,8,7,6,5,4,5,6,7,8,7,6],[2,3,4,5,6,7,8,9,8,7,6,5,4,5,6,7,8,7,6,5],[1,2,3,4,5,6,7,8,7,6,5,4,3,4,5,6,7,6,5,4]],
+    Q95:[[1,2,3,4,5,6,7,8,7,6,7,8,7,6,5,4,3,2,1,1],[2,3,4,5,6,7,8,9,8,7,8,9,8,7,6,5,4,3,2,1],[3,4,5,6,7,8,9,8,7,6,7,8,7,6,5,4,3,2,1,1]]
+  };
+  const interps={
+    Q5:"Q₅ présente une variabilité localisée à l'échelle 2–3 ans entre 2003 et 2010. Le GWS ne franchit pas le seuil à 95% — absence de mode dominant global. Les étiages sont gouvernés par des forçages thermiques apériodiques (TR, CSDI).",
+    Q50:"Q₅₀ révèle une structure cohérente à l'échelle de 4 ans entre 2008 et 2015, le GWS approchant le seuil à 95%. Cette oscillation quasi-quadriennale est cohérente avec les cycles ENSO modulant les précipitations en Afrique de l'Ouest.",
+    Q95:"Q₉₅ présente la structure la plus significative avec une zone nette à 4–5 ans entre 2000 et 2008. Le GWS franchit le seuil à 95% — seule période globalement dominante. Coïncide avec les crues majeures de 1998–2010 dans le bassin."
+  };
+  const rows=cwt[state.selectedDebit];
+  return `
+  ${header("Variabilité temporelle","Transformée en ondelettes continues (CWT)", true)}
+  <div class="content">
+    <div class="tabs">
+      <div class="tab ${state.selectedDebit==='Q5'?'active':''}" onclick="setState({selectedDebit:'Q5'})">Q₅ Étiage</div>
+      <div class="tab ${state.selectedDebit==='Q50'?'active':''}" onclick="setState({selectedDebit:'Q50'})">Q₅₀ Médian</div>
+      <div class="tab ${state.selectedDebit==='Q95'?'active':''}" onclick="setState({selectedDebit:'Q95'})">Q₉₅ Crue</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Scalogramme CWT — ${state.selectedDebit}</div>
+      <div style="font-size:10px;color:#4a6a5a;margin-bottom:6px;">Période (années) ↕ · Temps (1991–2020) →</div>
+      <div style="display:flex;gap:6px;">
+        <div style="font-size:9px;color:#6a9080;writing-mode:vertical-lr;transform:rotate(180deg);">2 · 4 · 8</div>
+        <div style="flex:1;">
+          <div class="cwt-visual">
+            ${rows.map(row=>`<div class="cwt-row">
+              ${row.map(v=>`<div class="cwt-cell" style="background:${colors[Math.min(v,9)]};"></div>`).join("")}
+            </div>`).join("")}
+          </div>
+          <div style="font-size:9px;color:#6a9080;display:flex;justify-content:space-between;margin-top:2px;">
+            <span>1991</span><span>2000</span><span>2010</span><span>2020</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:8px;align-items:center;">
+        <span style="font-size:10px;color:#6a9080;">Faible</span>
+        ${colors.map(c=>`<div style="width:16px;height:10px;background:${c};border-radius:2px;"></div>`).join("")}
+        <span style="font-size:10px;color:#6a9080;">Fort</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Interprétation</div>
+      <div class="interp-box">${interps[state.selectedDebit]}</div>
+    </div>
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenOS3() {
+  return `
+  ${header("Relations de phase","Ondelettes croisées · Cohérence · 9 paires", true)}
+  <div class="content">
+    <div class="tabs">
+      <div class="tab ${state.os3Tab==='xwt'?'active':''}" onclick="setState({os3Tab:'xwt'})">Phases XWT</div>
+      <div class="tab ${state.os3Tab==='wtc'?'active':''}" onclick="setState({os3Tab:'wtc'})">Cohérence WTC</div>
+      <div class="tab ${state.os3Tab==='synth'?'active':''}" onclick="setState({os3Tab:'synth'})">Synthèse</div>
+    </div>
+
+    ${state.os3Tab==='xwt' ? `
+    <div class="card">
+      <div class="card-title">Relations de phase — 9 paires</div>
+      <div class="card-sub">→ en phase · ← antiphase · ↓ 1er précède · ↘ retard</div>
+      ${INDICES_SIGNIFICATIFS.map(d=>`
+      <div class="phase-card">
+        <div class="phase-arrow">${d.phase}</div>
+        <div class="phase-info">
+          <div class="pair">${d.indice} — ${d.debit} · ρ=${d.rho>0?"+":""}${d.rho.toFixed(3)}</div>
+          <div class="interp">${d.interp}</div>
+        </div>
+      </div>`).join("")}
+    </div>` : ""}
+
+    ${state.os3Tab==='wtc' ? `
+    <div class="card">
+      <div class="card-title">Cohérence WTC par échelle</div>
+      <div class="card-sub">Période dominante : 4 ans · Fenêtre robuste : 2005–2015</div>
+      ${[
+        {label:"2 ans", q5:0.42, q50:0.51, q95:0.58},
+        {label:"4 ans", q5:0.65, q50:0.78, q95:0.81},
+        {label:"8 ans", q5:0.38, q50:0.45, q95:0.35},
+        {label:"16 ans",q5:0.22, q50:0.31, q95:0.28},
+      ].map(row=>`
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:#8ab5a5;margin-bottom:4px;font-weight:600;">${row.label}</div>
+        ${[["Q₅",row.q5],["Q₅₀",row.q50],["Q₉₅",row.q95]].map(([lbl,val])=>`
+        <div class="coh-row">
+          <div class="coh-label">${lbl}</div>
+          <div class="coh-track">
+            <div class="coh-fill" style="width:${val*100}%;background:${val>0.6?"linear-gradient(90deg,#0f6e56,#4ecba0)":"linear-gradient(90deg,#1a4a3a,#3a7a6a)"};">${val.toFixed(2)}</div>
+          </div>
+        </div>`).join("")}
+      </div>`).join("")}
+      <div class="interp-box">L'échelle de 4 ans concentre les cohérences les plus élevées pour les trois métriques, cohérente avec la périodicité ENSO. La fenêtre 2005–2015 est la plus robuste pour les couplages thermiques.</div>
+    </div>` : ""}
+
+    ${state.os3Tab==='synth' ? `
+    <div class="card">
+      <div class="card-title">Synthèse OS3</div>
+      <div class="section-label">Crues extrêmes (Q₉₅)</div>
+      <div class="interp-box">Relations en phase avec Rx5day, Rx1day, PRCPTOT. Réponse quasi-synchrone aux pluies intenses. Période dominante : 4 ans · 1998–2010.</div>
+      <div class="section-label" style="margin-top:10px;">Débit médian (Q₅₀)</div>
+      <div class="interp-box">Double forçage : en phase avec TR et PRCPTOT · antiphase avec CDD et CSDI. Fenêtre : 2005–2015.</div>
+      <div class="section-label" style="margin-top:10px;">Étiages extrêmes (Q₅)</div>
+      <div class="interp-box">Exclusivement gouvernés par les forçages thermiques. TR en phase · CSDI en antiphase. Variabilité apériodique.</div>
+    </div>` : ""}
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenAlertes() {
+  return `
+  ${header("Alertes hydroclimatiques","Surveillance des seuils ETCCDI", true)}
+  <div class="content">
+    <div class="alert-item">
+      <div class="alert-title">⚠ Rx5day — Seuil dépassé</div>
+      <div class="alert-detail">Valeur : 142 mm · Seuil : 130 mm · Risque crue Q₉₅ · ρ=+0.532</div>
+    </div>
+    <div class="alert-item">
+      <div class="alert-title">⚠ CDD — Seuil dépassé</div>
+      <div class="alert-detail">Séquence sèche : 78j · Seuil : 70j · Impact Q₅₀ · ρ=−0.497</div>
+    </div>
+    <div class="normal-item">
+      <div class="normal-title">✓ TR — Normal</div>
+      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Nuits tropicales : 42 · Seuil : 50 · Q₅ non menacé</div>
+    </div>
+    <div class="normal-item">
+      <div class="normal-title">✓ PRCPTOT — Normal</div>
+      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Cumul : 1124 mm · Dans les limites historiques</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Débits à Bonou</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-top:4px;">
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Moyenne</div>
+          <div style="font-weight:700;color:#4ecba0;font-size:16px;">${STATS_DEBIT.moyenne} m³/s</div>
+        </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Maximum</div>
+          <div style="font-weight:700;color:#e06060;font-size:16px;">${STATS_DEBIT.max} m³/s</div>
+        </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Minimum</div>
+          <div style="font-weight:700;color:#e0a060;font-size:16px;">${STATS_DEBIT.min} m³/s</div>
+        </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Écart-type</div>
+          <div style="font-weight:700;color:#8ab5a5;font-size:16px;">${STATS_DEBIT.ecart_type}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenProfil() {
+  const u = state.user || {};
+  return `
+  ${header("Mon profil","Informations du compte")}
+  <div class="content">
+    <div class="card" style="text-align:center;padding:24px 16px;">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name">${u.nom || "Utilisateur"}</div>
+      <div class="profile-role">${u.role || "scientifique"}</div>
+      <div class="profile-email">${u.email || ""}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Informations</div>
+      <div style="font-size:12px;color:#8ab5a5;line-height:2;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Institution</span>
+          <span style="color:#e8f4f0;">${u.institution || "ENSGMM/UNSTIM"}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Rôle</span>
+          <span style="color:#4ecba0;">${u.role || "scientifique"}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Bassin étudié</span>
+          <span style="color:#e8f4f0;">Ouémé · Bonou</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Période</span>
+          <span style="color:#e8f4f0;">1991–2020</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Accès rapide</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${["OS1","OS2","OS3","Alertes"].map((m,i)=>`
+        <div onclick="setState({screen:'${["os1","os2","os3","alertes"][i]}'})"
+             style="background:#0d2235;border:1px solid #234055;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+          <div style="font-size:18px;">${["📊","〰️","🔗","🔔"][i]}</div>
+          <div style="font-size:11px;color:#4ecba0;font-weight:600;margin-top:4px;">${m}</div>
+        </div>`).join("")}
+      </div>
+    </div>
+    <button class="btn-danger" onclick="doLogout()">🚪 Se déconnecter</button>
+  </div>
+  ${bottomNav()}`;
+}
+
+function screenStations() {
+  return `
+  ${header("Gestion des stations","25 pluviométriques · 4 synoptiques", true)}
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Stations pluviométriques (25)</div>
+      <div class="stations-grid">
+        ${STATIONS.map(s=>`
+        <div class="station-item ${s===state.selectedStation?'selected':''}"
+             onclick="setState({selectedStation:'${s}'})">${s}</div>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Stations synoptiques (4)</div>
+      <div class="stations-grid">
+        ${["BOHICON","COTONOU","PARAKOU","SAVÈ"].map(s=>`
+        <div class="station-item" style="border-color:#e0a060;color:#e0a060;">${s}</div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+
+function screenImport() {
+  return `
+  ${header("Import des données","Charger un nouveau jeu de données", true)}
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Format attendu</div>
+      <div style="font-size:12px;color:#8ab5a5;line-height:1.8;">
+        • Fichier Excel (.xlsx)<br>
+        • Colonnes : Date · Station · Variable<br>
+        • Date au format JJ/MM/AAAA<br>
+        • Pas de temps : journalier<br>
+        • Période minimale : 20 ans
+      </div>
+    </div>
+    <div class="card" style="border:2px dashed #234055;background:#0d1b2a;text-align:center;padding:32px 16px;">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div>
+      <div style="font-size:13px;color:#4ecba0;font-weight:600;">Glisser un fichier ici</div>
+      <div style="font-size:11px;color:#4a6a5a;margin-top:4px;">ou cliquer pour sélectionner</div>
+    </div>
+    <button class="btn-primary" style="margin-top:8px;"
+      onclick="alert('Fonctionnalité disponible en version déployée')">
+      Importer et analyser
+    </button>
+  </div>`;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const screenMap = {
+    accueil:      screenAccueil,
+    auth:         screenAuth,
+    dashboard:    screenDashboard,
+    os1:          screenOS1,
+    os2:          screenOS2,
+    os3:          screenOS3,
+    alertes:      screenAlertes,
+    profil:       screenProfil,
+    stations:     screenStations,
+    import:       screenImport,
+  };
+  const fn = screenMap[state.screen];
+  document.getElementById("app").innerHTML = fn ? fn() : screenAccueil();
+}
+
+render();
+</script>
+</body>
+</html>
