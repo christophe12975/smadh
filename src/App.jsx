@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import * as XLSX from "xlsx";
+import { 
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, 
+  CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+} from "recharts";
+import { loadExcel } from "./services/dataReader";
 
+console.log("SMADH APP CHARGE");
+console.log("APP.JSX EST BIEN CHARGE");
+
+// --- PALETTE DE COULEURS & CONSTANTES ---
 const ink = "#12242b";
 const teal = "#0f6e56";
 const tealLight = "#9fe1cb";
@@ -17,6 +25,35 @@ const debits = [
   { annee: 2021, debit: 49 }, { annee: 2022, debit: 66 }, { annee: 2023, debit: 73 },
 ];
 
+const seuils = [
+  { indice: "RX1day", seuil: "> 80 mm", statut: "dépassé", date: "12/07/2026" },
+  { indice: "CDD", seuil: "> 20 jours", statut: "normal", date: "—" },
+  { indice: "R95p", seuil: "> 60 mm", statut: "dépassé", date: "03/07/2026" },
+];
+
+const indicesDefaut = [
+  { code: "RX1day", nom: "Précip. max 1 jour", rho: 0.71, n: 9 },
+  { code: "R95p", nom: "Précip. jours très humides", rho: 0.64, n: 9 },
+  { code: "TXx", nom: "Température max extrême", rho: -0.38, n: 9 },
+  { code: "CDD", nom: "Jours secs consécutifs", rho: -0.55, n: 9 },
+  { code: "SDII", nom: "Intensité pluie quotidienne", rho: 0.47, n: 9 },
+];
+
+const NOMS_INDICES = {
+  PRCPTOT: "Précipitation totale annuelle", RX1day: "Précip. max 1 jour", Rx5day: "Précip. max 5 jours",
+  R10: "Jours de pluie > 10mm", R20: "Jours de pluie > 20mm", SDII: "Intensité pluie quotidienne",
+  CDD: "Jours secs consécutifs", CWD: "Jours humides consécutifs",
+  SU25: "Jours chauds (> 25°C)", TR20: "Nuits tropicales (> 20°C)", TN10p: "Nuits fraîches (10e pct)",
+  TX10p: "Jours frais (10e pct)", TN90p: "Nuits chaudes (90e pct)", TX90p: "Jours chauds (90e pct)",
+  WSDI: "Vagues de chaleur", CSDI: "Vagues de froid",
+};
+
+const coherence = [
+  { echelle: "1-2 ans", coh: 0.42 }, { echelle: "2-4 ans", coh: 0.81 },
+  { echelle: "4-8 ans", coh: 0.58 }, { echelle: "8-16 ans", coh: 0.29 },
+];
+
+// --- FONCTIONS STATISTIQUES ---
 function rang(valeurs) {
   const indexed = valeurs.map((v, i) => ({ v, i }));
   indexed.sort((a, b) => a.v - b.v);
@@ -48,23 +85,7 @@ function spearman(x, y) {
   return { rho, n };
 }
 
-const indicesDefaut = [
-  { code: "RX1day", nom: "Précip. max 1 jour", rho: 0.71, n: 9 },
-  { code: "R95p", nom: "Précip. jours très humides", rho: 0.64, n: 9 },
-  { code: "TXx", nom: "Température max extrême", rho: -0.38, n: 9 },
-  { code: "CDD", nom: "Jours secs consécutifs", rho: -0.55, n: 9 },
-  { code: "SDII", nom: "Intensité pluie quotidienne", rho: 0.47, n: 9 },
-];
-
-const NOMS_INDICES = {
-  PRCPTOT: "Précipitation totale annuelle", RX1day: "Précip. max 1 jour", Rx5day: "Précip. max 5 jours",
-  R10: "Jours de pluie > 10mm", R20: "Jours de pluie > 20mm", SDII: "Intensité pluie quotidienne",
-  CDD: "Jours secs consécutifs", CWD: "Jours humides consécutifs",
-  SU25: "Jours chauds (> 25°C)", TR20: "Nuits tropicales (> 20°C)", TN10p: "Nuits fraîches (10e pct)",
-  TX10p: "Jours frais (10e pct)", TN90p: "Nuits chaudes (90e pct)", TX90p: "Jours chauds (90e pct)",
-  WSDI: "Vagues de chaleur", CSDI: "Vagues de froid",
-};
-
+// --- HOOKS PERSONNALISÉS ---
 function useIndicesExcel(debitsParStationAnnee) {
   const [indices, setIndices] = useState(indicesDefaut);
   const [source, setSource] = useState("données de démonstration");
@@ -107,7 +128,7 @@ function useIndicesExcel(debitsParStationAnnee) {
 
         if (resultats.length > 0) {
           setIndices(resultats.sort((a, b) => Math.abs(b.rho) - Math.abs(a.rho)));
-          setSource(`indices.xlsx — station ${station} (${resultats[0].n} années communes avec les débits)`);
+          setSource(`indices.xlsx — station ${station} (${resultats[0].n} années communes)`);
         }
       })
       .catch(() => {});
@@ -116,15 +137,20 @@ function useIndicesExcel(debitsParStationAnnee) {
   return { indices, source, stationsExcel, stationChoisie };
 }
 
+// --- COMPOSANTS UI DE BASE ---
 function Shell({ title, subtitle, onBack, children }) {
   return (
-    <div style={{ maxWidth: 380, margin: "0 auto", background: "#fff", minHeight: 680,
+    <div style={{
+      maxWidth: 420, margin: "20px auto", background: "#fff", minHeight: 680,
       fontFamily: "'Inter', system-ui, sans-serif", color: ink, borderRadius: 20,
-      overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}>
+      overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+    }}>
       <div style={{ background: ink, color: "#fff", padding: "22px 20px 18px" }}>
         {onBack && (
-          <button onClick={onBack} style={{ background: "none", border: "none", color: tealLight,
-            fontSize: 13, padding: 0, marginBottom: 10, cursor: "pointer" }}>← retour</button>
+          <button onClick={onBack} style={{
+            background: "none", border: "none", color: tealLight,
+            fontSize: 13, padding: 0, marginBottom: 10, cursor: "pointer"
+          }}>← retour</button>
         )}
         <div style={{ fontSize: 11, letterSpacing: "0.08em", color: tealLight, textTransform: "uppercase" }}>SMADH</div>
         <div style={{ fontSize: 20, fontWeight: 600, marginTop: 4 }}>{title}</div>
@@ -137,11 +163,14 @@ function Shell({ title, subtitle, onBack, children }) {
 
 function Card({ children, style }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 14,
-      border: "1px solid #e4e2d9", ...style }}>{children}</div>
+    <div style={{
+      background: "#fff", borderRadius: 14, padding: 16, marginBottom: 14,
+      border: "1px solid #e4e2d9", ...style
+    }}>{children}</div>
   );
 }
 
+// --- VUES / ÉCRANS ---
 function Login({ onLogin }) {
   const [role, setRole] = useState("scientifique");
   return (
@@ -157,12 +186,14 @@ function Login({ onLogin }) {
               flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, cursor: "pointer",
               border: role === r ? `1.5px solid ${teal}` : "1px solid #d3d1c7",
               background: role === r ? "#e1f5ee" : "#fff", color: role === r ? teal : slate,
-              fontWeight: role === r ? 600 : 400 }}>{r}</button>
+              fontWeight: role === r ? 600 : 400
+            }}>{r}</button>
           ))}
         </div>
-        <button onClick={() => onLogin(role)} style={{ width: "100%", padding: "12px 0",
-          background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600,
-          fontSize: 14, cursor: "pointer" }}>Se connecter</button>
+        <button onClick={() => onLogin(role)} style={{
+          width: "100%", padding: "12px 0", background: teal, color: "#fff",
+          border: "none", borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: "pointer"
+        }}>Se connecter</button>
       </Card>
       <div style={{ fontSize: 12, color: slate, textAlign: "center" }}>Rôle simulé — sans backend réel</div>
     </Shell>
@@ -176,19 +207,24 @@ function Dashboard({ role, go, indices }) {
     { key: "os1", label: "Analyse des extrêmes", desc: "Indices ETCCDI · corrélation de Spearman", n: "OS1" },
     { key: "wavelet", label: "Réponse des débits", desc: "Transformée en ondelettes continue", n: "OS2" },
     { key: "os3", label: "Relations temps-fréquence", desc: "Ondelettes croisées · cohérence", n: "OS3" },
+    { key: "decision", label: "Guide de Décision", desc: "Matrice cause-effet & préventions", n: "M8" },
     { key: "alerts", label: "Alertes", desc: `${nbAlertes} seuil(s) dépassé(s)`, n: "M7" },
   ];
   const adminItems = [
     { key: "users", label: "Gestion des utilisateurs", desc: "Profils, rôles, accès", n: "M1" },
     { key: "settings", label: "Paramétrage", desc: "Stations, période, seuils", n: "M9" },
   ];
+
   return (
     <Shell title="Tableau de bord" subtitle={`Connecté · ${role}`}>
       <Card style={{ background: teal, border: "none" }}>
         <div style={{ color: "#e1f5ee", fontSize: 12 }}>Indice le plus influent</div>
-        <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginTop: 2 }}>{indices[0].code}</div>
-        <div style={{ color: "#c9ece0", fontSize: 12, marginTop: 2 }}>ρ = {indices[0].rho.toFixed(2)} · {indices[0].nom}</div>
+        <div style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginTop: 2 }}>{indices[0]?.code || "—"}</div>
+        <div style={{ color: "#c9ece0", fontSize: 12, marginTop: 2 }}>
+          ρ = {indices[0]?.rho ? indices[0].rho.toFixed(2) : "0.00"} · {indices[0]?.nom || ""}
+        </div>
       </Card>
+
       {role === "administrateur" && (
         <>
           <div style={{ fontSize: 11, color: slate, textTransform: "uppercase", letterSpacing: "0.04em", margin: "4px 0 8px" }}>Administration</div>
@@ -199,14 +235,14 @@ function Dashboard({ role, go, indices }) {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{it.label}</div>
                   <div style={{ fontSize: 12, color: slate, marginTop: 2 }}>{it.desc}</div>
                 </div>
-                <div style={{ fontSize: 11, color: amber, fontWeight: 700, background: "#faeeda",
-                  borderRadius: 6, padding: "3px 8px" }}>{it.n}</div>
+                <div style={{ fontSize: 11, color: amber, fontWeight: 700, background: "#faeeda", borderRadius: 6, padding: "3px 8px" }}>{it.n}</div>
               </div>
             </Card>
           ))}
           <div style={{ fontSize: 11, color: slate, textTransform: "uppercase", letterSpacing: "0.04em", margin: "10px 0 8px" }}>Analyses</div>
         </>
       )}
+
       {items.map(it => (
         <Card key={it.key} style={{ cursor: "pointer" }}>
           <div onClick={() => go(it.key)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -214,9 +250,11 @@ function Dashboard({ role, go, indices }) {
               <div style={{ fontSize: 14, fontWeight: 600 }}>{it.label}</div>
               <div style={{ fontSize: 12, color: slate, marginTop: 2 }}>{it.desc}</div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 8px",
+            <div style={{
+              fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 8px",
               color: it.key === "alerts" && nbAlertes > 0 ? "#791f1f" : teal,
-              background: it.key === "alerts" && nbAlertes > 0 ? "#fcebeb" : "#e1f5ee" }}>{it.n}</div>
+              background: it.key === "alerts" && nbAlertes > 0 ? "#fcebeb" : "#e1f5ee"
+            }}>{it.n}</div>
           </div>
         </Card>
       ))}
@@ -243,7 +281,8 @@ function DataView({ back }) {
           <button key={s} onClick={() => setStation(s)} style={{
             padding: "6px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer",
             border: s === station ? `1.5px solid ${teal}` : "1px solid #d3d1c7",
-            background: s === station ? "#e1f5ee" : "#fff", color: s === station ? teal : slate }}>{s}</button>
+            background: s === station ? "#e1f5ee" : "#fff", color: s === station ? teal : slate
+          }}>{s}</button>
         ))}
       </div>
       <Card>
@@ -281,7 +320,7 @@ function OS1({ back, indices, source }) {
           <BarChart data={indices} layout="vertical" margin={{ left: 10 }}>
             <XAxis type="number" domain={[-1, 1]} tick={{ fontSize: 10 }} />
             <YAxis type="category" dataKey="code" tick={{ fontSize: 11 }} width={60} />
-            <Tooltip formatter={(v) => v.toFixed(2)} />
+            <Tooltip formatter={(v) => typeof v === 'number' ? v.toFixed(2) : v} />
             <Bar dataKey="rho" radius={4}>
               {indices.map((d, i) => (
                 <Cell key={i} fill={Math.abs(d.rho) > 0.5 ? teal : "#c9c7bd"} />
@@ -293,16 +332,14 @@ function OS1({ back, indices, source }) {
       </Card>
       <Card style={{ background: "#fceeda", border: "1px solid #f0c98c" }}>
         <div style={{ fontSize: 12, color: "#633806" }}>
-          Le seuil de couleur ci-dessus n'est pas un test de significativité statistique formel (pas de calcul de
-          p-value ni de correction pour comparaisons multiples) — juste un repère visuel. Un vrai test reste à définir
-          (cf. points ouverts du cahier des charges).
+          Le seuil de couleur ci-dessus n'est pas un test de significativité statistique formel — juste un repère visuel.
         </div>
       </Card>
       <Card>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Interprétation automatique</div>
         <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-          <b>{indices[0].code}</b> ({indices[0].nom}) présente la corrélation la plus forte avec les débits
-          (ρ = {indices[0].rho.toFixed(2)}, sur {indices[0].n} années communes).
+          <b>{indices[0]?.code}</b> ({indices[0]?.nom}) présente la corrélation la plus forte avec les débits
+          (ρ = {indices[0]?.rho ? indices[0].rho.toFixed(2) : "0.00"}, sur {indices[0]?.n || 0} années communes).
         </div>
         <div style={{ fontSize: 11, color: amber, marginTop: 8 }}>Généré par règles expertes — pas de LLM sur les résultats numériques</div>
       </Card>
@@ -336,19 +373,9 @@ function Wavelet({ back }) {
           coïncidant avec une hausse des précipitations extrêmes.
         </div>
       </Card>
-      <Card style={{ background: "#fceeda", border: "1px solid #f0c98c" }}>
-        <div style={{ fontSize: 12, color: "#633806" }}>
-          Calcul simulé côté client pour la démo — en production, exécuté côté serveur (hypothèse retenue dans le cahier des charges).
-        </div>
-      </Card>
     </Shell>
   );
 }
-
-const coherence = [
-  { echelle: "1-2 ans", coh: 0.42 }, { echelle: "2-4 ans", coh: 0.81 },
-  { echelle: "4-8 ans", coh: 0.58 }, { echelle: "8-16 ans", coh: 0.29 },
-];
 
 function OS3({ back }) {
   return (
@@ -377,22 +404,9 @@ function OS3({ back }) {
           <span>Indices et débits en phase sur l'échelle 2–4 ans (flèche horizontale droite)</span>
         </div>
       </Card>
-      <Card>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Interprétation automatique</div>
-        <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-          La cohérence la plus significative se situe sur l'échelle 2–4 ans (WTC = 0.81), avec une relation
-          de phase quasi synchrone entre les indices climatiques extrêmes et les débits.
-        </div>
-      </Card>
     </Shell>
   );
 }
-
-const seuils = [
-  { indice: "RX1day", seuil: "> 80 mm", statut: "dépassé", date: "12/07/2026" },
-  { indice: "CDD", seuil: "> 20 jours", statut: "normal", date: "—" },
-  { indice: "R95p", seuil: "> 60 mm", statut: "dépassé", date: "03/07/2026" },
-];
 
 function Alerts({ back }) {
   return (
@@ -409,8 +423,10 @@ function Alerts({ back }) {
       <Card>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Historique des seuils</div>
         {seuils.map((s, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0",
-            borderBottom: i < seuils.length - 1 ? "1px solid #eee" : "none", fontSize: 13 }}>
+          <div key={i} style={{
+            display: "flex", justifyContent: "space-between", padding: "8px 0",
+            borderBottom: i < seuils.length - 1 ? "1px solid #eee" : "none", fontSize: 13
+          }}>
             <span>{s.indice} <span style={{ color: slate, fontSize: 12 }}>({s.seuil})</span></span>
             <span style={{ color: s.statut === "dépassé" ? "#a32d2d" : teal, fontWeight: 600, fontSize: 12 }}>{s.statut}</span>
           </div>
@@ -420,21 +436,154 @@ function Alerts({ back }) {
   );
 }
 
+function DecisionGuide({ back, indices }) {
+  const handleExportPDF = () => {
+    window.print();
+  };
+
+  return (
+    <Shell title="Guide de Décision" subtitle="Comprendre et anticiper les impacts" onBack={back}>
+      {/* Synthèse d'Anticipation */}
+      <Card style={{ background: teal, color: "#fff" }}>
+        <div style={{ fontSize: 11, color: tealLight, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+          Synthèse d'Anticipation · Bonou
+        </div>
+        <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, color: "#e1f5ee" }}>
+          Ce module traduit les indices de météo extrême (ETCCDI) en règles opérationnelles pour la gestion des risques hydrologiques.
+        </div>
+      </Card>
+
+      {/* Stratégies de Prévention */}
+      <Card>
+        <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 12 }}>
+          🛡️ Stratégies de Prévention
+        </div>
+
+        {/* Règle 1 : Crue */}
+        <div style={{
+          background: "#e1f5ee", padding: "12px", borderRadius: 8, marginBottom: 10,
+          borderLeft: `4px solid ${teal}`
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: teal }}>
+            Pluies intenses répétées (Rx5day)
+          </div>
+          <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
+            En cas de cumul élevé sur 5 jours, <b>déclencher immédiatement le niveau de pré-alerte crue à la station de Bonou</b>.
+          </div>
+        </div>
+
+        {/* Règle 2 : Sécheresse / Étiage */}
+        <div style={{
+          background: "#fcebeb", padding: "12px", borderRadius: 8,
+          borderLeft: "4px solid #a32d2d"
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#791f1f" }}>
+            Sécheresse prolongée (CDD &gt; 70 jours)
+          </div>
+          <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
+            En période de jours secs consécutifs élevés, <b>restreindre préventivement les prélèvements d'eau</b> pour préserver le débit d'étiage (Q<sub>95</sub>).
+          </div>
+        </div>
+      </Card>
+
+      {/* Tableau Récapitulatif Cause à Effet */}
+      <Card>
+        <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 10 }}>
+          📊 Tableau Récapitulatif Cause ➔ Effet
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: bg, textAlign: "left", color: slate }}>
+                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Cause (Indice)</th>
+                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Effet Attendu</th>
+                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Recommandation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>
+                  Pluies 5 jours (Rx5day)
+                </td>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: "#a32d2d" }}>
+                  Crue à Bonou (réponse rapide)
+                </td>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>
+                  Suivi pluviométrique strict
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>
+                  Sécheresses longues (CDD)
+                </td>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: amber }}>
+                  Baisse des réserves & étiage
+                </td>
+                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>
+                  Plan de soutien d'étiage
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Bouton Générateur de PDF */}
+      <button
+        onClick={handleExportPDF}
+        style={{
+          width: "100%", padding: "12px 0", background: ink, color: "#fff",
+          border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+        }}
+      >
+        📄 Imprimer / Télécharger la Fiche Décisionnelle (PDF)
+      </button>
+
+    </Shell>
+  );
+}
+
+// --- COMPOSANT PRINCIPAL ---
 const debitsParAnnee = Object.fromEntries(debits.map(d => [d.annee, d.debit]));
 
 export default function App() {
+  console.log("APP SMADH CHARGE");
   const [screen, setScreen] = useState("login");
   const [role, setRole] = useState("scientifique");
   const { indices, source } = useIndicesExcel(debitsParAnnee);
 
-  if (screen === "login") return <Login onLogin={(r) => { setRole(r); setScreen("dashboard"); }} />;
-  if (screen === "dashboard") return <Dashboard role={role} go={(k) => setScreen(k)} indices={indices} />;
+  useEffect(() => {
+    async function testLecture() {
+      try {
+        if (typeof loadExcel === 'function') {
+          const debit = await loadExcel("/DATA/debit_bonou.xlsx");
+          console.log("Données débit :", debit);
+        }
+      } catch (error) {
+        console.error("Erreur lecture Excel :", error);
+      }
+    }
+    testLecture();
+  }, []);
+
+  if (screen === "login") {
+    return <Login onLogin={(r) => { setRole(r); setScreen("dashboard"); }} />;
+  }
+
+  if (screen === "dashboard") {
+    return <Dashboard role={role} go={(k) => setScreen(k)} indices={indices} />;
+  }
+
   if (screen === "data") return <DataView back={() => setScreen("dashboard")} />;
   if (screen === "os1") return <OS1 back={() => setScreen("dashboard")} indices={indices} source={source} />;
   if (screen === "wavelet") return <Wavelet back={() => setScreen("dashboard")} />;
   if (screen === "os3") return <OS3 back={() => setScreen("dashboard")} />;
   if (screen === "alerts") return <Alerts back={() => setScreen("dashboard")} />;
+  if (screen === "decision") return <DecisionGuide back={() => setScreen("dashboard")} indices={indices} />;
   if (screen === "users") return <Placeholder title="Gestion des utilisateurs" back={() => setScreen("dashboard")} />;
   if (screen === "settings") return <Placeholder title="Paramétrage" back={() => setScreen("dashboard")} />;
+
   return null;
 }

@@ -6,33 +6,32 @@
 <title>HydroClim Analyzer — Bassin de l'Ouémé</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #070f18; color: #e8f4f0; min-height: 100vh; }
-  @media (min-width: 480px) and (hover: hover) and (pointer: fine) {
-    body { background: radial-gradient(ellipse at 50% -10%, #12283a 0%, #070f18 55%); display:flex; justify-content:center; padding: 28px 0; }
-  }
-  .app { max-width: 420px; width:100%; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; position:relative; }
-  @media (min-width: 480px) and (hover: hover) and (pointer: fine) {
-    .app { min-height: calc(100vh - 56px); border-radius: 28px; overflow: hidden; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,203,160,0.08); }
-  }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-thumb { background: #234055; border-radius: 3px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1b2a; color: #e8f4f0; min-height: 100vh; }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 
-  .header { background: linear-gradient(135deg, #0d3b2e 0%, #0d1b2a 100%); padding: 18px 20px; border-bottom: 1px solid #1a4a3a; position: sticky; top: 0; z-index: 50; }
-  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .app-label { font-size: 10px; letter-spacing: 0.18em; color: #4ecba0; text-transform: uppercase; font-weight: 700; }
+  .header { background: linear-gradient(135deg, #0d3b2e 0%, #0d1b2a 100%); padding: 16px 20px; border-bottom: 1px solid #1a4a3a; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .app-label { font-size: 10px; letter-spacing: 0.15em; color: #4ecba0; text-transform: uppercase; font-weight: 600; }
   .header-actions { display: flex; gap: 6px; align-items: center; }
-  .icon-btn { background: none; border: none; color: #4ecba0; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; transition: background 0.15s; }
+  .icon-btn { background: none; border: none; color: #4ecba0; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 6px; }
   .icon-btn:hover { background: rgba(78,203,160,0.1); }
-  .back-btn { background: none; border: none; color: #4ecba0; font-size: 13px; cursor: pointer; padding: 5px 10px; border-radius: 20px; display: flex; align-items: center; gap: 4px; transition: background 0.15s; }
-  .back-btn:hover { background: rgba(78,203,160,0.12); }
-  .header h1 { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.01em; }
-  .header p { font-size: 11.5px; color: #8ab5a5; margin-top: 3px; }
+  .back-btn { background: none; border: none; color: #4ecba0; font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; }
+  .back-btn:hover { background: rgba(78,203,160,0.1); }
+  .header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  .header p { font-size: 11px; color: #8ab5a5; margin-top: 2px; }
+
+  .bottom-nav { position: sticky; bottom: 0; background: #0d1b2a; border-top: 1px solid #1a4a3a; display: flex; padding: 8px 0 12px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background 0.2s; }
+  .nav-item:hover { background: rgba(78,203,160,0.08); }
+  .nav-item.active .nav-icon { color: #4ecba0; }
+  .nav-item.active .nav-label { color: #4ecba0; }
+  .nav-icon { font-size: 20px; color: #4a6a5a; transition: color 0.2s; }
+  .nav-label { font-size: 9px; color: #4a6a5a; font-weight: 500; letter-spacing: 0.03em; transition: color 0.2s; }
 
   .content { flex: 1; padding: 16px; background: #0f2030; overflow-y: auto; }
 
-  .card { background: #1a2f42; border: 1px solid #234055; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 16px -8px rgba(0,0,0,0.35); }
-  .card-title { font-size: 13.5px; font-weight: 700; color: #e8f4f0; margin-bottom: 10px; letter-spacing: -0.005em; }
+  .card { background: #1a2f42; border: 1px solid #234055; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #e8f4f0; margin-bottom: 10px; }
   .card-sub { font-size: 11px; color: #6a9080; margin-bottom: 8px; }
 
   .auth-logo { text-align: center; padding: 24px 0 16px; }
@@ -42,14 +41,6 @@
   .auth-tabs { display: flex; background: #0d2235; border-radius: 10px; padding: 3px; margin-bottom: 16px; }
   .auth-tab { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; color: #6a9080; transition: all 0.2s; }
   .auth-tab.active { background: #1a4a3a; color: #4ecba0; }
-  
-  .role-selector { display: flex; gap: 8px; margin-top: 4px; }
-  .role-option { flex: 1; padding: 10px 8px; border: 1px solid #234055; background: #0d2235; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .role-option .r-icon { font-size: 18px; display: block; margin-bottom: 2px; }
-  .role-option .r-title { font-size: 11px; font-weight: 700; color: #8ab5a5; }
-  .role-option.selected { border-color: #4ecba0; background: rgba(78,203,160,0.12); }
-  .role-option.selected .r-title { color: #4ecba0; }
-
   .input-group { margin-bottom: 12px; }
   .input-group label { font-size: 12px; color: #8ab5a5; display: block; margin-bottom: 4px; }
   .input-group input, .input-group select { width: 100%; background: #0d2235; border: 1px solid #234055; border-radius: 8px; padding: 10px 12px; color: #e8f4f0; font-size: 14px; outline: none; }
@@ -60,34 +51,28 @@
   .error-text.show { display: block; }
   .form-alert { background: rgba(220,80,80,0.1); border: 1px solid rgba(220,80,80,0.3); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #e06060; margin-bottom: 12px; display: none; }
   .form-alert.show { display: block; }
-  .form-alert.info { background: rgba(78,203,160,0.1); border-color: rgba(78,203,160,0.3); color: #4ecba0; }
-  
-  .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #0f6e56, #0a9e7a); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 18px -8px rgba(15,110,86,0.55); }
-  .btn-primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 8px 22px -6px rgba(15,110,86,0.6); }
-  .btn-primary:active { transform: translateY(0); }
+  .btn-primary { width: 100%; padding: 13px; background: linear-gradient(135deg, #0f6e56, #0a9e7a); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .btn-primary:hover { opacity: 0.9; }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-danger { width: 100%; padding: 11px; background: rgba(220,80,80,0.1); color: #e06060; border: 1px solid rgba(220,80,80,0.3); border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
   .btn-danger:hover { background: rgba(220,80,80,0.2); }
   .auth-link { text-align: center; font-size: 12px; color: #6a9080; margin-top: 12px; cursor: pointer; }
   .auth-link span { color: #4ecba0; text-decoration: underline; }
 
-  .stat-card { background: linear-gradient(135deg, #0f6e56, #0a4a3a); border: none; position:relative; overflow:hidden; }
-  .stat-card::after { content:""; position:absolute; top:-40%; right:-20%; width:140px; height:140px; background:radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%); }
-  .stat-card .label { font-size: 11px; color: #9fe1cb; font-weight: 500; }
-  .stat-card .value { font-size: 26px; font-weight: 800; color: #fff; margin: 5px 0; letter-spacing: -0.02em; }
+  .stat-card { background: linear-gradient(135deg, #0f6e56, #0a4a3a); border: none; }
+  .stat-card .label { font-size: 11px; color: #9fe1cb; }
+  .stat-card .value { font-size: 26px; font-weight: 700; color: #fff; margin: 4px 0; }
   .stat-card .detail { font-size: 11px; color: #7dcfb0; }
 
-  .menu-item { cursor: pointer; transition: transform 0.18s ease, filter 0.18s ease; }
-  .menu-item:hover { transform: translateX(3px); }
-  .menu-item:hover .card { border-color: #4ecba0; box-shadow: 0 6px 22px -8px rgba(78,203,160,0.25); }
-  .menu-item:active { transform: translateX(1px) scale(0.995); }
+  .menu-item { cursor: pointer; transition: transform 0.15s; }
+  .menu-item:hover { transform: translateX(4px); }
+  .menu-item:hover .card { border-color: #4ecba0; }
   .menu-row { display: flex; justify-content: space-between; align-items: center; }
-  .menu-info .title { font-size: 14.5px; font-weight: 700; color: #e8f4f0; }
-  .menu-info .desc { font-size: 11.5px; color: #6a9080; margin-top: 3px; }
-  .badge { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: rgba(78,203,160,0.15); color: #4ecba0; border: 1px solid rgba(78,203,160,0.25); white-space:nowrap; }
-  .badge.alert { background: rgba(220,80,80,0.15); color: #e06060; border-color: rgba(220,80,80,0.25); }
-  .badge.decideur { background: rgba(224,160,96,0.15); color: #e0a060; border-color: rgba(224,160,96,0.25); }
-  .section-label { font-size: 10.5px; color: #5a7a6a; text-transform: uppercase; letter-spacing: 0.1em; margin: 16px 0 8px; font-weight: 700; }
+  .menu-info .title { font-size: 14px; font-weight: 600; color: #e8f4f0; }
+  .menu-info .desc { font-size: 11px; color: #6a9080; margin-top: 2px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(78,203,160,0.15); color: #4ecba0; }
+  .badge.alert { background: rgba(220,80,80,0.15); color: #e06060; }
+  .section-label { font-size: 10px; color: #4a6a5a; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 6px; }
 
   .spearman-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .spearman-table th { color: #6a9080; font-weight: 500; padding: 6px 4px; text-align: center; border-bottom: 1px solid #234055; }
@@ -110,9 +95,8 @@
   .station-item.selected { border-color: #4ecba0; color: #4ecba0; background: rgba(78,203,160,0.08); }
 
   .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-  .tab { flex: 1; padding: 9px 4px; border-radius: 10px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid #234055; background: #0d2235; color: #6a9080; text-align: center; transition: all 0.18s; }
-  .tab:hover { color: #8ab5a5; }
-  .tab.active { border-color: #4ecba0; background: rgba(78,203,160,0.14); color: #4ecba0; box-shadow: 0 0 0 1px rgba(78,203,160,0.15) inset; }
+  .tab { flex: 1; padding: 8px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #234055; background: #0d2235; color: #6a9080; text-align: center; transition: all 0.2s; }
+  .tab.active { border-color: #4ecba0; background: rgba(78,203,160,0.12); color: #4ecba0; }
 
   .phase-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: #0d2235; border-radius: 10px; margin-bottom: 8px; }
   .phase-arrow { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
@@ -125,37 +109,78 @@
   .normal-item { background: rgba(78,203,160,0.06); border: 1px solid rgba(78,203,160,0.2); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
   .normal-title { font-size: 13px; font-weight: 600; color: #4ecba0; }
 
+  .cwt-visual { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+  .cwt-row { display: flex; height: 20px; }
+  .cwt-cell { flex: 1; }
+
+  .coh-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .coh-label { font-size: 11px; color: #8ab5a5; width: 60px; flex-shrink: 0; }
+  .coh-track { flex: 1; height: 18px; background: #0d2235; border-radius: 4px; overflow: hidden; }
+  .coh-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 6px; font-size: 10px; font-weight: 700; color: #fff; }
+
   .interp-box { background: rgba(78,203,160,0.06); border-left: 3px solid #4ecba0; border-radius: 0 8px 8px 0; padding: 10px 12px; font-size: 12px; line-height: 1.6; color: #c0d8d0; margin-top: 8px; }
-  .interp-box.decideur-box { background: rgba(224,160,96,0.08); border-left-color: #e0a060; color: #e8d0b8; }
 
-  .profile-avatar { width: 64px; height: 64px; background: linear-gradient(135deg,#0f6e56,#4ecba0); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 12px; overflow:hidden; position:relative; }
-  .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-  .avatar-wrap { position:relative; width:80px; margin:0 auto 12px; }
-  .avatar-wrap .profile-avatar { width:80px; height:80px; font-size:32px; margin:0; }
-  .avatar-edit-btn { position:absolute; bottom:-2px; right:-2px; width:28px; height:28px; border-radius:50%; background:#4ecba0; border:3px solid #1a2f42; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; }
-  .avatar-edit-btn:hover { background:#3aa885; }
+  .profile-avatar { width: 64px; height: 64px; background: linear-gradient(135deg,#0f6e56,#4ecba0); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 12px; }
   .profile-name { text-align: center; font-size: 16px; font-weight: 700; color: #fff; }
-  .profile-role { text-align: center; font-size: 12px; color: #4ecba0; margin-top: 3px; text-transform: capitalize; }
-  .profile-role.decideur { color: #e0a060; }
+  .profile-role { text-align: center; font-size: 12px; color: #4ecba0; margin-top: 3px; }
+  .profile-email { text-align: center; font-size: 11px; color: #6a9080; margin-top: 2px; }
 
-  /* HAMBURGER & DRAWER */
-  .hamburger-btn { background:none; border:none; cursor:pointer; padding:6px; display:flex; flex-direction:column; gap:4px; justify-content:center; }
-  .hamburger-btn span { display:block; width:20px; height:2px; background:#4ecba0; border-radius:2px; }
-  .drawer-overlay { position:absolute; inset:0; background:rgba(3,8,14,0.88); backdrop-filter: blur(2px); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.25s; }
-  .drawer-overlay.open { opacity:1; pointer-events:auto; }
-  .drawer { position:absolute; top:0; left:0; bottom:0; width:78%; max-width:300px; background:#0d1b2a; border-right:1px solid #1a4a3a; z-index:201; transform:translateX(-100%); transition:transform 0.25s; display:flex; flex-direction:column; padding:20px 0; box-shadow: 8px 0 30px -10px rgba(0,0,0,0.5); }
-  .drawer.open { transform:translateX(0); }
-  .drawer-header { padding:0 20px 16px; border-bottom:1px solid #1a4a3a; margin-bottom:8px; }
-  .drawer-header .title { font-size:16px; font-weight:700; color:#fff; }
-  .drawer-header .sub { font-size:11px; color:#6a9080; margin-top:2px; }
-  .drawer-item { display:flex; align-items:center; gap:12px; padding:14px 20px; cursor:pointer; color:#8ab5a5; font-size:14px; font-weight:600; transition:background 0.15s; }
-  .drawer-item:hover { background:rgba(78,203,160,0.08); }
-  .drawer-item.active { color:#4ecba0; background:rgba(78,203,160,0.1); border-right:3px solid #4ecba0; }
-  .drawer-item .di-icon { font-size:18px; width:24px; text-align:center; }
+  .user-row { display:flex; justify-content:space-between; align-items:center; padding:10px; background:#0d2235; border-radius:8px; margin-bottom:6px; }
+  .user-row .u-name { font-size:12px; font-weight:600; color:#e8f4f0; }
+  .user-row .u-meta { font-size:10px; color:#6a9080; }
 
-  /* BASSIN HERO ANIMATION */
+  /* ============================================================
+     ANIMATION BASSIN VERSANT — écran d'accueil
+     Réseau de rivières (motif dendritique) qui "coule" en boucle,
+     gouttes de pluie tombant vers les affluents, ondulations d'eau.
+     Pur CSS/SVG, aucun fichier externe requis.
+  ============================================================ */
   .basin-hero { position: relative; width: 100%; height: 220px; overflow: hidden; border-radius: 0 0 24px 24px; background: radial-gradient(ellipse at 50% 0%, #123a2e 0%, #0d1b2a 70%); }
-  .basin-label { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 10px; letter-spacing: 0.1em; color: #7dcfb0; text-transform: uppercase; opacity: 0.85; background: rgba(7,15,24,0.6); padding: 4px; }
+  .basin-hero svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .basin-river { fill: none; stroke: #4ecba0; stroke-linecap: round; opacity: 0.55; }
+  .basin-river.flow {
+    stroke-dasharray: 6 10;
+    animation: basin-flow 3.5s linear infinite;
+  }
+  .basin-river.flow-slow { animation-duration: 5.5s; opacity: 0.35; }
+  .basin-river.flow-fast { animation-duration: 2.2s; opacity: 0.7; }
+  @keyframes basin-flow {
+    to { stroke-dashoffset: -160; }
+  }
+  .basin-drop {
+    position: absolute;
+    width: 3px; height: 10px;
+    background: linear-gradient(#9fe1cb, #4ecba0);
+    border-radius: 2px;
+    opacity: 0;
+    animation: basin-drop-fall linear infinite;
+  }
+  @keyframes basin-drop-fall {
+    0%   { transform: translateY(-10px); opacity: 0; }
+    10%  { opacity: 0.9; }
+    85%  { opacity: 0.6; }
+    100% { transform: translateY(190px); opacity: 0; }
+  }
+  .basin-ripple {
+    position: absolute;
+    width: 6px; height: 6px;
+    border: 1.5px solid #4ecba0;
+    border-radius: 50%;
+    opacity: 0;
+    animation: basin-ripple-grow linear infinite;
+  }
+  @keyframes basin-ripple-grow {
+    0%   { transform: scale(0.3); opacity: 0.7; }
+    100% { transform: scale(4.5); opacity: 0; }
+  }
+  .basin-label {
+    position: absolute; bottom: 12px; left: 0; right: 0;
+    text-align: center; font-size: 10px; letter-spacing: 0.1em;
+    color: #7dcfb0; text-transform: uppercase; opacity: 0.75;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .basin-river.flow, .basin-drop, .basin-ripple { animation: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -164,30 +189,12 @@
 <script>
 
 // ============================================================
-// CONFIGURATION SUPABASE
+// CONFIGURATION SUPABASE — remplace ces deux valeurs par les
+// tiennes (Project Settings > API dans ton tableau de bord Supabase)
 // ============================================================
 const SUPABASE_URL = "https://mfaoeahoxexkleilapaw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Hw_W5Y0o7qFBfY0GwwRYVA_QP7VWBpJ";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ============================================================
-// SÉCURITÉ CÔTÉ SERVEUR (Supabase) — POLICIES RLS À APPLIQUER EN BASE
-// ============================================================
-// Exécute ceci dans le SQL Editor Supabase :
-//
-//   alter table profiles enable row level security;
-//
-//   create policy "Lecture de son propre profil"
-//     on profiles for select using (auth.uid() = id);
-//
-//   create policy "Création de son propre profil (scientifique ou décideur)"
-//     on profiles for insert
-//     with check (auth.uid() = id and role in ('scientifique', 'décideur'));
-//
-//   create policy "Mise à jour de son propre profil (rôle non modifiable)"
-//     on profiles for update
-//     using (auth.uid() = id)
-//     with check (auth.uid() = id and role = (select role from profiles where id = auth.uid()));
 </script>
 <script>
 
@@ -258,7 +265,7 @@ const STATS_DEBIT = { moyenne:203.19, ecart_type:296.11, min:0.81, max:1085 };
 let state = {
   screen:"accueil",
   authTab:"login",
-  selectedRegRole:"scientifique", // 'scientifique' ou 'décideur'
+  role:"scientifique",
   user:null,
   selectedDebit:"Q5",
   selectedStation:"BONOU",
@@ -267,10 +274,9 @@ let state = {
   os2VarTab:"hydro",
   os3Tab:"xwt",
   navActive:"accueil",
-  menuOpen:false,
-  avatarUploading:false,
   prevScreen:null,
-  loading:false
+  loading:false,
+  usersList:[]
 };
 
 function setState(newState) {
@@ -286,6 +292,9 @@ function goBack() {
   setState({ screen: prev, prevScreen: null });
 }
 
+// ============================================================
+// HELPERS
+// ============================================================
 function rhoDisplay(rho, sig) {
   const cls = !sig ? "ns" : rho > 0 ? "sig" : "neg";
   return `<span class="${cls}">${rho.toFixed(2)}${sig?"*":""}</span>`;
@@ -293,20 +302,17 @@ function rhoDisplay(rho, sig) {
 function barWidth(rho) { return Math.abs(rho) * 100; }
 
 // ============================================================
-// VALIDATION + AUTHENTIFICATION
+// VALIDATION + STOCKAGE DES COMPTES
 // ============================================================
-function validateRegistration({nom, email, identifiant, pass, passConfirm, inst, role}) {
+function validateRegistration({nom, email, pass, passConfirm, inst}) {
   const errors = {};
   if(!nom || nom.trim().length < 3) errors.nom = "Le nom complet doit contenir au moins 3 caractères.";
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!email || !emailRe.test(email.trim())) errors.email = "Adresse email invalide.";
-  if(!identifiant || identifiant.trim().length < 3) errors.identifiant = "L'identifiant doit contenir au moins 3 caractères.";
-  else if(!/^[a-zA-Z0-9._-]+$/.test(identifiant.trim())) errors.identifiant = "Lettres, chiffres, points, tirets et underscores uniquement.";
   if(!pass || pass.length < 6) errors.pass = "Le mot de passe doit contenir au moins 6 caractères.";
   if(!passConfirm) errors.passConfirm = "Merci de confirmer le mot de passe.";
   else if(pass && passConfirm && pass !== passConfirm) errors.passConfirm = "Les mots de passe ne correspondent pas.";
   if(!inst || inst.trim().length < 2) errors.inst = "L'institution est obligatoire.";
-  if(!['scientifique', 'décideur'].includes(role)) errors.role = "Veuillez choisir un rôle valide.";
   return errors;
 }
 
@@ -324,28 +330,27 @@ function clearFieldErrors(ids) {
     if(err) { err.textContent = ""; err.classList.remove("show"); }
   });
 }
-function showFormAlert(id, message, variant) {
+function showFormAlert(id, message) {
   const box = document.getElementById(id);
-  if(box) {
-    box.textContent = message;
-    box.classList.add("show");
-    box.classList.toggle("info", variant === "info");
-  }
+  if(box) { box.textContent = message; box.classList.add("show"); }
 }
 function hideFormAlert(id) {
   const box = document.getElementById(id);
-  if(box) { box.classList.remove("show"); box.classList.remove("info"); }
+  if(box) { box.classList.remove("show"); }
 }
 
+// ============================================================
+// AUTHENTIFICATION SUPABASE
+// ============================================================
 async function registerAccount({nom, email, identifiant, pass, inst, role}) {
   const { data: authData, error: authError } = await supabaseClient.auth.signUp({
     email: email,
-    password: pass,
-    options: {
-      data: { nom: nom, identifiant: identifiant, institution: inst, role: role }
-    }
+    password: pass
   });
   if(authError) throw new Error(traduireErreurSupabase(authError.message));
+
+  sessionStorage.setItem('pending_profile_' + email, JSON.stringify({ nom, identifiant, inst, role }));
+
   return authData.user;
 }
 
@@ -363,28 +368,18 @@ async function loginAccount(email, pass) {
     .single();
 
   if(profileError) {
-    const meta = data.user.user_metadata || {};
-    const fallbackRole = ['décideur', 'scientifique'].includes(meta.role) ? meta.role : 'scientifique';
-    const fallback = {
-      nom: meta.nom || email.split("@")[0],
-      identifiant: meta.identifiant || email.split("@")[0],
-      inst: meta.institution || "Non renseignée",
-      role: fallbackRole
-    };
+    const pendingRaw = sessionStorage.getItem('pending_profile_' + email);
+    const pending = pendingRaw ? JSON.parse(pendingRaw) : { nom: email.split("@")[0], identifiant: email.split("@")[0], inst: "Non renseignée", role: "scientifique" };
 
     const { data: newProfile, error: insertError } = await supabaseClient
       .from('profiles')
-      .insert({ id: data.user.id, identifiant: fallback.identifiant, nom: fallback.nom, institution: fallback.inst, role: fallback.role })
+      .insert({ id: data.user.id, identifiant: pending.identifiant, nom: pending.nom, institution: pending.inst, role: pending.role })
       .select()
       .single();
 
-    if(insertError) {
-      if(insertError.message.includes("duplicate key") || insertError.code === "23505") {
-        throw new Error("Cet identifiant est déjà utilisé. Contacte un administrateur.");
-      }
-      throw new Error("Connexion réussie mais échec de création du profil : " + insertError.message);
-    }
+    if(insertError) throw new Error("Connexion réussie mais échec de création du profil : " + insertError.message);
 
+    sessionStorage.removeItem('pending_profile_' + email);
     profile = newProfile;
   }
 
@@ -393,54 +388,40 @@ async function loginAccount(email, pass) {
 
 function traduireErreurSupabase(msg) {
   if(msg.includes("already registered")) return "Cet email est déjà utilisé.";
-  if(msg.includes("Email not confirmed")) return "Email non confirmé. Vérifie ta boîte mail (et spams) puis clique sur le lien de confirmation.";
   if(msg.includes("Invalid login credentials")) return "Email ou mot de passe incorrect.";
   if(msg.includes("Password should be")) return "Le mot de passe doit contenir au moins 6 caractères.";
   return msg;
 }
 
 // ============================================================
-// DRAWER MENU & HEADER
+// BOTTOM NAV
 // ============================================================
-function toggleMenu() {
-  setState({ menuOpen: !state.menuOpen });
-}
-
-function drawerMenu() {
+function bottomNav() {
   if(!state.user) return "";
-  const isDecideur = state.user.role === 'décideur';
-  
   const items = [
-    { id:"dashboard", icon:"🏠", label: isDecideur ? "Tableau décisionnel" : "Accueil scientifique" },
-    { id:"os1",       icon:"📊", label: isDecideur ? "Synthèse des facteurs" : "OS1 — Indices ETCCDI" },
-    { id:"os2",       icon:"〰️", label: isDecideur ? "Cycles & Tendances" : "OS2 — Variabilité CWT" },
-    { id:"os3",       icon:"🔗", label: isDecideur ? "Prise de décision" : "OS3 — Relations de phase" },
-    { id:"alertes",   icon:"🔔", label:"Alertes & Risques" },
-    { id:"profil",    icon:"👤", label:"Mon Profil" },
+    { id:"dashboard", icon:"🏠", label:"Accueil" },
+    { id:"os1",       icon:"📊", label:"OS1" },
+    { id:"os2",       icon:"〰️", label:"OS2" },
+    { id:"os3",       icon:"🔗", label:"OS3" },
+    { id:"profil",    icon:"👤", label:"Profil" },
   ];
-  return `
-  <div class="drawer-overlay ${state.menuOpen?'open':''}" onclick="setState({menuOpen:false})"></div>
-  <div class="drawer ${state.menuOpen?'open':''}">
-    <div class="drawer-header">
-      <div class="title">HydroClim Analyzer</div>
-      <div class="sub">${state.user?.nom || ""} · <span style="text-transform:capitalize;color:${isDecideur?'#e0a060':'#4ecba0'};">${state.user?.role}</span></div>
-    </div>
+  return `<div class="bottom-nav">
     ${items.map(it=>`
-    <div class="drawer-item ${state.screen===it.id?'active':''}"
-         onclick="setState({screen:'${it.id}',navActive:'${it.id}',menuOpen:false})">
-      <span class="di-icon">${it.icon}</span>
-      <span>${it.label}</span>
+    <div class="nav-item ${state.screen===it.id?'active':''}"
+         onclick="setState({screen:'${it.id}',navActive:'${it.id}'})">
+      <span class="nav-icon">${it.icon}</span>
+      <span class="nav-label">${it.label}</span>
     </div>`).join("")}
   </div>`;
 }
 
+// ============================================================
+// HEADER
+// ============================================================
 function header(title, sub, showBack=false, showMenu=false) {
   return `<div class="header">
     <div class="header-top">
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${state.user ? `<button class="hamburger-btn" onclick="toggleMenu()"><span></span><span></span><span></span></button>` : ""}
-        <div class="app-label">SMADH · Ouémé</div>
-      </div>
+      <div class="app-label">SMADH · Ouémé</div>
       <div class="header-actions">
         ${showBack ? `<button class="back-btn" onclick="goBack()">← retour</button>` : ""}
         ${showMenu && state.user ? `<button class="icon-btn" onclick="setState({screen:'alertes'})">🔔</button>` : ""}
@@ -452,7 +433,7 @@ function header(title, sub, showBack=false, showMenu=false) {
 }
 
 // ============================================================
-// ÉCRANS
+// SCREENS
 // ============================================================
 
 function screenAccueil() {
@@ -462,23 +443,31 @@ function screenAccueil() {
   </div>
   ${header("HydroClim Analyzer","Bassin versant de l'Ouémé à Bonou")}
   <div class="content">
-    <div style="text-align:center;padding:10px 0 16px;">
+    <div style="text-align:center;padding:10px 0 20px;">
       <div style="font-size:18px;font-weight:700;color:#fff;">Bienvenue</div>
       <div style="font-size:12px;color:#6a9080;margin-top:6px;line-height:1.6;">
-        Plateforme d'aide à la décision et d'analyse des<br>
-        extrêmes climatiques sur les débits d'eau<br>
+        Outil d'analyse des relations entre<br>
+        extrêmes climatiques et débits<br>
         <span style="color:#4ecba0;">Bénin · 1991–2020</span>
       </div>
     </div>
     <div class="card" style="background:linear-gradient(135deg,#0f3b2e,#0d2235);">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;font-size:11px;">
         <div><div style="font-size:20px;">📍</div><div style="color:#4ecba0;font-weight:700;">25</div><div style="color:#6a9080;">Stations</div></div>
-        <div><div style="font-size:20px;">📊</div><div style="color:#4ecba0;font-weight:700;">2 Profils</div><div style="color:#6a9080;">Science / Décision</div></div>
+        <div><div style="font-size:20px;">📈</div><div style="color:#4ecba0;font-weight:700;">16</div><div style="color:#6a9080;">Indices ETCCDI</div></div>
         <div><div style="font-size:20px;">💧</div><div style="color:#4ecba0;font-weight:700;">30</div><div style="color:#6a9080;">Années</div></div>
       </div>
     </div>
-    <button class="btn-primary" onclick="setState({screen:'auth'})">Accéder à l'Espace Sécurisé</button>
-    <div style="text-align:center;font-size:11px;color:#4a6a5a;margin-top:12px;">
+    <div class="card">
+      <div class="card-title">Modules disponibles</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8ab5a5;">
+        <div>📊 <strong style="color:#4ecba0;">OS1</strong> — Indices extrêmes significatifs (Spearman)</div>
+        <div>〰️ <strong style="color:#4ecba0;">OS2</strong> — Variabilité temporelle (CWT)</div>
+        <div>🔗 <strong style="color:#4ecba0;">OS3</strong> — Relations de phase (XWT · WTC)</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="setState({screen:'auth'})">Connexion / Inscription</button>
+    <div style="text-align:center;font-size:11px;color:#4a6a5a;margin-top:10px;">
       ENSGMM/UNSTIM · Mémoire Ingénieur · 2025
     </div>
   </div>`;
@@ -505,7 +494,7 @@ function screenAuth() {
       <div class="form-alert" id="login-alert"></div>
       <div class="input-group">
         <label>Email</label>
-        <input type="email" id="login-user" placeholder="Ex: nom@domaine.bj"/>
+        <input type="email" id="login-user" placeholder="Ex: vodounou@unstim.bj"/>
         <div class="error-text" id="login-user-error"></div>
       </div>
       <div class="input-group">
@@ -522,37 +511,15 @@ function screenAuth() {
 
     <div class="card">
       <div class="form-alert" id="reg-alert"></div>
-      
-      <div class="input-group">
-        <label>Type de profil / Utilisation</label>
-        <div class="role-selector">
-          <div class="role-option ${state.selectedRegRole==='scientifique'?'selected':''}"
-               onclick="setState({selectedRegRole:'scientifique'})">
-            <span class="r-icon">🔬</span>
-            <span class="r-title">Scientifique</span>
-          </div>
-          <div class="role-option ${state.selectedRegRole==='décideur'?'selected':''}"
-               onclick="setState({selectedRegRole:'décideur'})">
-            <span class="r-icon">💼</span>
-            <span class="r-title">Décideur</span>
-          </div>
-        </div>
-      </div>
-
       <div class="input-group">
         <label>Nom complet</label>
         <input type="text" id="reg-nom" placeholder="Ex: Christophe VODOUNOU"/>
         <div class="error-text" id="reg-nom-error"></div>
       </div>
       <div class="input-group">
-        <label>Email professionnel</label>
+        <label>Email</label>
         <input type="email" id="reg-email" placeholder="Ex: vodounou@unstim.bj"/>
         <div class="error-text" id="reg-email-error"></div>
-      </div>
-      <div class="input-group">
-        <label>Identifiant utilisateur</label>
-        <input type="text" id="reg-identifiant" placeholder="Ex: c.vodounou"/>
-        <div class="error-text" id="reg-identifiant-error"></div>
       </div>
       <div class="input-group">
         <label>Mot de passe</label>
@@ -565,9 +532,16 @@ function screenAuth() {
         <div class="error-text" id="reg-pass-confirm-error"></div>
       </div>
       <div class="input-group">
-        <label>Institution / Ministère / Organisme</label>
-        <input type="text" id="reg-inst" placeholder="Ex: Ministère de l'Eau / UNSTIM"/>
+        <label>Institution</label>
+        <input type="text" id="reg-inst" placeholder="Ex: ENSGMM/UNSTIM Abomey"/>
         <div class="error-text" id="reg-inst-error"></div>
+      </div>
+      <div class="input-group">
+        <label>Rôle</label>
+        <select id="reg-role">
+          <option value="scientifique">Scientifique</option>
+          <option value="administrateur">Administrateur</option>
+        </select>
       </div>
       <button class="btn-primary" id="reg-btn" onclick="doRegister()">Créer mon compte</button>
     </div>
@@ -600,7 +574,7 @@ async function doLogin() {
   try {
     const profile = await loginAccount(email, pass);
     setState({
-      user: { nom: profile.nom, role: profile.role, email: profile.email, institution: profile.institution, identifiant: profile.identifiant, avatar_url: profile.avatar_url },
+      user: { nom: profile.nom, role: profile.role, email: profile.email, institution: profile.institution, identifiant: profile.identifiant },
       screen: "dashboard"
     });
   } catch(e) {
@@ -612,27 +586,27 @@ async function doLogin() {
 
 async function doRegister() {
   hideFormAlert("reg-alert");
-  clearFieldErrors(["reg-nom","reg-email","reg-identifiant","reg-pass","reg-pass-confirm","reg-inst"]);
+  clearFieldErrors(["reg-nom","reg-email","reg-pass","reg-pass-confirm","reg-inst"]);
 
   const nom  = document.getElementById("reg-nom")?.value || "";
   const email= document.getElementById("reg-email")?.value || "";
-  const identifiant = document.getElementById("reg-identifiant")?.value || "";
   const pass = document.getElementById("reg-pass")?.value || "";
   const passConfirm = document.getElementById("reg-pass-confirm")?.value || "";
   const inst = document.getElementById("reg-inst")?.value || "";
-  const role = state.selectedRegRole;
+  const role = document.getElementById("reg-role")?.value || "scientifique";
 
-  const errors = validateRegistration({nom, email, identifiant, pass, passConfirm, inst, role});
+  const errors = validateRegistration({nom, email, pass, passConfirm, inst});
   if(Object.keys(errors).length > 0) {
     if(errors.nom) showFieldError("reg-nom", errors.nom);
     if(errors.email) showFieldError("reg-email", errors.email);
-    if(errors.identifiant) showFieldError("reg-identifiant", errors.identifiant);
     if(errors.pass) showFieldError("reg-pass", errors.pass);
     if(errors.passConfirm) showFieldError("reg-pass-confirm", errors.passConfirm);
     if(errors.inst) showFieldError("reg-inst", errors.inst);
     showFormAlert("reg-alert", "Merci de corriger les champs indiqués ci-dessous.");
     return;
   }
+
+  const identifiant = email.trim().split("@")[0] + "_" + Math.random().toString(36).slice(2,6);
 
   const btn = document.getElementById("reg-btn");
   if(btn) { btn.disabled = true; btn.textContent = "Création en cours..."; }
@@ -641,16 +615,17 @@ async function doRegister() {
     await registerAccount({
       nom: nom.trim(),
       email: email.trim(),
-      identifiant: identifiant.trim(),
+      identifiant: identifiant,
       pass: pass,
       inst: inst.trim(),
       role: role
     });
 
+    showFormAlert("reg-alert", "");
     hideFormAlert("reg-alert");
     setState({ screen: "auth", authTab: "login" });
     setTimeout(() => {
-      showFormAlert("login-alert", "Compte créé ! Vérifie ta boîte mail pour valider ton compte avant de te connecter.", "info");
+      showFormAlert("login-alert", "Compte créé ! Vérifie ta boîte mail et clique sur le lien de confirmation avant de te connecter.");
     }, 50);
   } catch(e) {
     console.error("Erreur inscription:", e);
@@ -667,131 +642,23 @@ async function doLogout() {
   }
 }
 
-async function handleAvatarChange(event) {
-  const file = event.target.files?.[0];
-  if(!file) return;
-
-  if(!["image/png","image/jpeg","image/webp"].includes(file.type)) {
-    alert("Format non supporté. Utilise une image PNG, JPEG ou WebP.");
-    return;
-  }
-  if(file.size > 4 * 1024 * 1024) {
-    alert("Image trop lourde (max 4 Mo).");
-    return;
-  }
-
-  setState({ avatarUploading: true });
-
-  try {
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    const userId = sessionData?.session?.user?.id;
-    if(!userId) throw new Error("Session expirée, reconnecte-toi.");
-
-    const ext = file.name.split(".").pop().toLowerCase();
-    const path = `${userId}/avatar.${ext}`;
-
-    const { error: uploadError } = await supabaseClient.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, cacheControl: "3600" });
-    if(uploadError) throw uploadError;
-
-    const { data: publicUrlData } = supabaseClient.storage
-      .from("avatars")
-      .getPublicUrl(path);
-
-    const avatarUrl = publicUrlData.publicUrl + "?t=" + Date.now();
-
-    const { error: updateError } = await supabaseClient
-      .from("profiles")
-      .update({ avatar_url: avatarUrl })
-      .eq("id", userId);
-    if(updateError) throw updateError;
-
-    setState({
-      user: { ...state.user, avatar_url: avatarUrl },
-      avatarUploading: false
-    });
-  } catch(e) {
-    console.error("Erreur upload avatar:", e);
-    alert("Échec de l'envoi de la photo : " + e.message);
-    setState({ avatarUploading: false });
-  }
-}
-
-// ------------------------------------------------------------
-// DASHBOARD (Divergé selon Rôle)
-// ------------------------------------------------------------
 function screenDashboard() {
-  const isDecideur = state.user?.role === 'décideur';
-
-  if(isDecideur) {
-    return `
-    ${header("Tableau Décisionnel", `Portail institutionnel · ${state.user?.nom?.split(" ")[0]}`, false, true)}
-    <div class="content">
-      <div class="card stat-card" style="background:linear-gradient(135deg,#0d4b68,#0a2d42);">
-        <div class="label">Niveau de risque global sur le bassin</div>
-        <div class="value" style="color:#e0a060;">Vigilance Crue</div>
-        <div class="detail">Basé sur les données d'extrêmes 1991–2020 · Bonou</div>
-      </div>
-
-      <div class="card">
-        <div class="card-title"> Synthèse pour la Prise de Décision</div>
-        <div class="interp-box decideur-box">
-          <strong>Impact Climat & Eau :</strong> Les épisodes de pluies intenses sur 5 jours consécutifs (Rx5day) sont le principal moteur des crues majeures à Bonou.<br><br>
-          <strong>Délai de réaction :</strong> Les alertes de pluies cumulées sur le haut bassin donnent une fenêtre d'anticipation avant l'arrivée du pic de crue à Bonou.
-        </div>
-      </div>
-
-      <div class="section-label">Indicateurs Majeurs pour la Gestion</div>
-      <div class="card" style="padding:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:12px;color:#8ab5a5;">Risque de Crue Extrême</span>
-          <span class="badge alert">Élevé (Rx5day)</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12px;color:#8ab5a5;">Risque d'Étiage / Sécheresse</span>
-          <span class="badge decideur">Modéré (CDD)</span>
-        </div>
-      </div>
-
-      <div class="section-label">Actions Rapides</div>
-      <div class="menu-item" onclick="setState({screen:'alertes',prevScreen:'dashboard'})">
-        <div class="card"><div class="menu-row">
-          <div class="menu-info">
-            <div class="title">Alertes & Seuils Dépassés</div>
-            <div class="desc">Consulter les 2 alertes d'extrêmes en cours</div>
-          </div><div class="badge alert">⚠ 2</div>
-        </div></div>
-      </div>
-      <div class="menu-item" onclick="setState({screen:'os3',prevScreen:'dashboard'})">
-        <div class="card"><div class="menu-row">
-          <div class="menu-info">
-            <div class="title">Guide d'Anticipation</div>
-            <div class="desc">Relations de cause à effet et recommandations</div>
-          </div><div class="badge decideur">Guide</div>
-        </div></div>
-      </div>
-    </div>
-    ${drawerMenu()}`;
-  }
-
-  // Vue Scientifique / Admin
   return `
-  ${header("Tableau de bord", `Espace Scientifique · ${state.user?.nom?.split(" ")[0]}`, false, true)}
+  ${header("Tableau de bord", `Bienvenue, ${state.user?.nom?.split(" ")[0] || "Utilisateur"}`, false, true)}
   <div class="content">
     <div class="card stat-card">
-      <div class="label">Indice le plus influent sur Q₉₅ (Crues)</div>
+      <div class="label">Indice le plus influent sur Q₉₅</div>
       <div class="value">Rx5day</div>
-      <div class="detail">ρ = +0.532 · Précipitations max sur 5 jours (p < 0.05)</div>
+      <div class="detail">ρ = +0.532 · Précipitations max sur 5 jours</div>
     </div>
     <div class="card stat-card" style="background:linear-gradient(135deg,#4a1a1a,#2a0d0d);">
-      <div class="label">Indice le plus influent sur Q₅ (Étiages)</div>
+      <div class="label">Indice le plus influent sur Q₅</div>
       <div class="value" style="color:#e06060;">CSDI</div>
       <div class="detail" style="color:#c08080;">ρ = −0.502 · Vagues de froid (antiphase)</div>
     </div>
 
     ${state.user?.role==='administrateur' ? `
-    <div class="section-label">Administration System</div>
+    <div class="section-label">Administration</div>
     <div class="menu-item" onclick="setState({screen:'stations',prevScreen:'dashboard'})">
       <div class="card"><div class="menu-row">
         <div class="menu-info">
@@ -804,82 +671,57 @@ function screenDashboard() {
       <div class="card"><div class="menu-row">
         <div class="menu-info">
           <div class="title">Import des données</div>
-          <div class="desc">Charger un nouveau jeu de données Excel</div>
+          <div class="desc">Charger un nouveau jeu de données</div>
         </div><div class="badge">M2</div>
       </div></div>
-    </div>` : ""}
+    </div>
+    <div class="card" style="background:rgba(78,203,160,0.06);border:1px dashed #234055;">
+      <div style="font-size:11px;color:#6a9080;line-height:1.6;">
+        💡 La liste complète des comptes enregistrés se consulte dans le
+        <strong style="color:#4ecba0;">tableau de bord Supabase</strong> (Table Editor → profiles),
+        protégé par ton propre login — pas dans cette application.
+      </div>
+    </div>
+    <div class="section-label">Analyses</div>` :
+    `<div class="section-label">Modules d'analyse</div>`}
 
-    <div class="section-label">Accès rapide</div>
     <div class="menu-item" onclick="setState({screen:'os1',prevScreen:'dashboard'})">
       <div class="card"><div class="menu-row">
         <div class="menu-info">
-          <div class="title">Analyses Spearman (OS1)</div>
-          <div class="desc">16 indices ETCCDI × 3 quantiles</div>
+          <div class="title">Indices extrêmes significatifs</div>
+          <div class="desc">Corrélation de Spearman · 16 indices ETCCDI</div>
         </div><div class="badge">OS1</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'os2',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Variabilité temporelle</div>
+          <div class="desc">Transformée en ondelettes continues (CWT)</div>
+        </div><div class="badge">OS2</div>
+      </div></div>
+    </div>
+    <div class="menu-item" onclick="setState({screen:'os3',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Relations de phase</div>
+          <div class="desc">XWT · Cohérence en ondelettes (WTC)</div>
+        </div><div class="badge">OS3</div>
       </div></div>
     </div>
     <div class="menu-item" onclick="setState({screen:'alertes',prevScreen:'dashboard'})">
       <div class="card"><div class="menu-row">
         <div class="menu-info">
           <div class="title">Alertes hydroclimatiques</div>
-          <div class="desc">Seuils ETCCDI dépassés</div>
+          <div class="desc">2 seuils dépassés détectés</div>
         </div><div class="badge alert">⚠ 2</div>
       </div></div>
     </div>
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
-// ------------------------------------------------------------
-// OS1 (Adapté selon Rôle)
-// ------------------------------------------------------------
 function screenOS1() {
-  const isDecideur = state.user?.role === 'décideur';
-
-  if(isDecideur) {
-    return `
-    ${header("Facteurs d'Impact","Synthèse des indicateurs climatiques majeurs", true)}
-    <div class="content">
-      <div class="card">
-        <div class="card-title"> Facteurs Déclencheurs de Crues (Q₉₅)</div>
-        <div class="card-sub">Débits très élevés entraînant des inondations</div>
-        <div style="background:#0d2235;padding:12px;border-radius:8px;margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;">
-            <strong style="color:#4ecba0;font-size:13px;">Pluies de 5 jours (Rx5day)</strong>
-            <span class="badge alert">Impact Très Élevé</span>
-          </div>
-          <div style="font-size:11px;color:#8ab5a5;margin-top:4px;">C'est l'indicateur le plus critique : lorsque les cumuls sur 5 jours augmentent, le débit de crue augmente directement à Bonou.</div>
-        </div>
-        <div style="background:#0d2235;padding:12px;border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;">
-            <strong style="color:#4ecba0;font-size:13px;">Cumul Annuel (PRCPTOT)</strong>
-            <span class="badge">Impact Élevé</span>
-          </div>
-          <div style="font-size:11px;color:#8ab5a5;margin-top:4px;">Les années très arrosées soutiennent des niveaux de crue plus durables.</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title"> Facteurs de Sécheresse & Étiage (Q₅)</div>
-        <div class="card-sub">Périodes de bas niveau d'eau</div>
-        <div style="background:#0d2235;padding:12px;border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;">
-            <strong style="color:#e0a060;font-size:13px;">Séquences Sèches (CDD)</strong>
-            <span class="badge alert">Impact Négatif Fort</span>
-          </div>
-          <div style="font-size:11px;color:#8ab5a5;margin-top:4px;">Plus le nombre de jours secs consécutifs augmente, plus le débit médian et les réserves en eau s'effondrent.</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Cartographie des Zones à Risque</div>
-        <img src="${IMG_BASE}/spatialisation_ETCCDI_Bonou_finale.png" alt="Spatialisation" style="width:100%;border-radius:10px;margin-top:6px;"/>
-      </div>
-    </div>
-    ${drawerMenu()}`;
-  }
-
-  // Vue Scientifique
   return `
   ${header("Indices significatifs","Corrélation de Spearman · n=30 · α=0.05", true)}
   <div class="content">
@@ -948,7 +790,7 @@ function screenOS1() {
 
     ${state.os1Tab==='cartes' ? screenOS1Cartes() : ""}
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
 function screenOS1Cartes() {
@@ -997,83 +839,38 @@ function screenOS1Cartes() {
   `;
 }
 
-// ------------------------------------------------------------
-// OS2 & OS3 (Adaptés)
-// ------------------------------------------------------------
 function screenOS2() {
-  const isDecideur = state.user?.role === 'décideur';
-
   const variables = [
     { id:"hydro",  label:"Hydrologie",    fichier:"Scalogramme_Hydrologie.png",
-      interp: isDecideur 
-        ? "Le débit de la rivière suit un cycle majeur de 4 ans. Les périodes les plus humides et critiques ont été observées entre 2008 et 2015."
-        : "Le scalogramme des débits révèle une structure cohérente à l'échelle de 4 ans, particulièrement marquée entre 2008 et 2015 — oscillation quadriennale liée aux cycles ENSO." },
+      interp:"Le scalogramme des débits révèle une structure cohérente à l'échelle de 4 ans, particulièrement marquée entre 2008 et 2015 — une oscillation quasi-quadriennale cohérente avec les cycles ENSO modulant les précipitations en Afrique de l'Ouest." },
     { id:"precip", label:"Précipitation", fichier:"Scalogramme_Precipitation.png",
-      interp: isDecideur
-        ? "Les fortes pluies présentent un cycle récurrent de 4 à 5 ans, notamment entre 2000 et 2008, correspondant aux grandes crues historiques."
-        : "Le signal pluviométrique présente sa structure la plus significative à l'échelle 4–5 ans entre 2000 et 2008, coïncidant avec les crues majeures." },
+      interp:"Le signal pluviométrique présente sa structure la plus significative à l'échelle 4–5 ans entre 2000 et 2008, coïncidant avec les crues majeures observées dans le bassin sur cette période." },
     { id:"temp",   label:"Température",   fichier:"Scalogramme_Temperature.png",
-      interp: isDecideur
-        ? "Les températures varient sur des cycles plus courts (2 à 3 ans) sans régularité stricte."
-        : "Le scalogramme thermique montre une variabilité plus localisée à l'échelle 2–3 ans, sans mode dominant global stable." },
+      interp:"Le scalogramme thermique montre une variabilité plus localisée à l'échelle 2–3 ans, sans mode dominant global stable sur toute la période — cohérent avec des forçages plus apériodiques (nuits tropicales, vagues de froid)." },
   ];
   const v = variables.find(x=>x.id===state.os2VarTab) || variables[0];
   return `
-  ${header(isDecideur ? "Cycles & Tendances" : "Variabilité temporelle", isDecideur ? "Évolution pluriannuelle des extrêmes" : "Transformée en ondelettes continues (CWT)", true)}
+  ${header("Variabilité temporelle","Transformée en ondelettes continues (CWT)", true)}
   <div class="content">
     <div class="tabs">
       ${variables.map(item=>`
       <div class="tab ${state.os2VarTab===item.id?'active':''}" onclick="setState({os2VarTab:'${item.id}'})">${item.label}</div>`).join("")}
     </div>
     <div class="card">
-      <div class="card-title">${isDecideur ? "Graphique de tendance : " + v.label : "Scalogramme CWT — " + v.label}</div>
+      <div class="card-title">Scalogramme CWT — ${v.label}</div>
+      <div class="card-sub">Période (années) ↕ · Temps (1991–2020) →</div>
       <img src="${IMG_BASE}/${v.fichier}" alt="Scalogramme ${v.label}" loading="lazy"
            style="width:100%;border-radius:10px;margin-top:4px;background:#0d2235;min-height:160px;"/>
     </div>
     <div class="card">
-      <div class="card-title">${isDecideur ? "Ce qu'il faut retenir" : "Interprétation"}</div>
-      <div class="interp-box ${isDecideur?'decideur-box':''}">${v.interp}</div>
+      <div class="card-title">Interprétation</div>
+      <div class="interp-box">${v.interp}</div>
     </div>
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
 function screenOS3() {
-  const isDecideur = state.user?.role === 'décideur';
-
-  if(isDecideur) {
-    return `
-    ${header("Guide de Décision","Comprendre et anticiper les impacts", true)}
-    <div class="content">
-      <div class="card">
-        <div class="card-title"> Synthèse d'Anticipation</div>
-        <div class="interp-box decideur-box">
-          <strong>Stratégie de Prévention :</strong>
-          <ul style="margin-left:16px;margin-top:6px;line-height:1.6;">
-            <li>En cas de pluies intenses répétées sur 5 jours (Rx5day), déclencher le niveau de pré-alerte crue à Bonou.</li>
-            <li>En période de sécheresse prolongée (CDD > 70j), restreindre préventivement les prélèvements d'eau pour protéger les débits d'étiage.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Tableau Récapitulatif de Cause à Effet</div>
-        <div style="font-size:12px;line-height:1.8;color:#8ab5a5;">
-          <div style="padding:8px;background:#0d2235;border-radius:6px;margin-bottom:6px;">
-            <strong style="color:#4ecba0;">Pluies de 5 jours ➔ Crue à Bonou</strong><br>
-            Réponse rapide du bassin. Recommandation : Suivi pluviométrique strict.
-          </div>
-          <div style="padding:8px;background:#0d2235;border-radius:6px;">
-            <strong style="color:#e0a060;">Sécheresses longues ➔ Baisse des réserves</strong><br>
-            Impact direct sur les débits bas. Recommandation : Plan de soutien d'étiage.
-          </div>
-        </div>
-      </div>
-    </div>
-    ${drawerMenu()}`;
-  }
-
-  // Vue Scientifique
   return `
   ${header("Relations de phase","Ondelettes croisées · Cohérence · 9 paires", true)}
   <div class="content">
@@ -1109,6 +906,27 @@ function screenOS3() {
       <div class="card-sub">Zones de forte cohérence phase-amplitude</div>
       <img src="${IMG_BASE}/coherence_ondelettes.png" alt="Cohérence en ondelettes" loading="lazy"
            style="width:100%;border-radius:10px;margin-top:4px;background:#0d2235;min-height:160px;"/>
+    </div>
+    <div class="card">
+      <div class="card-title">Cohérence WTC par échelle</div>
+      <div class="card-sub">Période dominante : 4 ans · Fenêtre robuste : 2005–2015</div>
+      ${[
+        {label:"2 ans", q5:0.42, q50:0.51, q95:0.58},
+        {label:"4 ans", q5:0.65, q50:0.78, q95:0.81},
+        {label:"8 ans", q5:0.38, q50:0.45, q95:0.35},
+        {label:"16 ans",q5:0.22, q50:0.31, q95:0.28},
+      ].map(row=>`
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:#8ab5a5;margin-bottom:4px;font-weight:600;">${row.label}</div>
+        ${[["Q₅",row.q5],["Q₅₀",row.q50],["Q₉₅",row.q95]].map(([lbl,val])=>`
+        <div class="coh-row">
+          <div class="coh-label">${lbl}</div>
+          <div class="coh-track">
+            <div class="coh-fill" style="width:${val*100}%;background:${val>0.6?"linear-gradient(90deg,#0f6e56,#4ecba0)":"linear-gradient(90deg,#1a4a3a,#3a7a6a)"};">${val.toFixed(2)}</div>
+          </div>
+        </div>`).join("")}
+      </div>`).join("")}
+      <div class="interp-box">L'échelle de 4 ans concentre les cohérences les plus élevées pour les trois métriques, cohérente avec la périodicité ENSO. La fenêtre 2005–2015 est la plus robuste pour les couplages thermiques.</div>
     </div>` : ""}
 
     ${state.os3Tab==='synth' ? `
@@ -1116,9 +934,13 @@ function screenOS3() {
       <div class="card-title">Synthèse OS3</div>
       <div class="section-label">Crues extrêmes (Q₉₅)</div>
       <div class="interp-box">Relations en phase avec Rx5day, Rx1day, PRCPTOT. Réponse quasi-synchrone aux pluies intenses. Période dominante : 4 ans · 1998–2010.</div>
+      <div class="section-label" style="margin-top:10px;">Débit médian (Q₅₀)</div>
+      <div class="interp-box">Double forçage : en phase avec TR et PRCPTOT · antiphase avec CDD et CSDI. Fenêtre : 2005–2015.</div>
+      <div class="section-label" style="margin-top:10px;">Étiages extrêmes (Q₅)</div>
+      <div class="interp-box">Exclusivement gouvernés par les forçages thermiques. TR en phase · CSDI en antiphase. Variabilité apériodique.</div>
     </div>` : ""}
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
 function screenAlertes() {
@@ -1126,19 +948,23 @@ function screenAlertes() {
   ${header("Alertes hydroclimatiques","Surveillance des seuils ETCCDI", true)}
   <div class="content">
     <div class="alert-item">
-      <div class="alert-title">⚠ Rx5day — Seuil dépassé (Risque Crue)</div>
-      <div class="alert-detail">Valeur : 142 mm · Seuil : 130 mm · Risque élevé sur Q₉₅ à Bonou</div>
+      <div class="alert-title">⚠ Rx5day — Seuil dépassé</div>
+      <div class="alert-detail">Valeur : 142 mm · Seuil : 130 mm · Risque crue Q₉₅ · ρ=+0.532</div>
     </div>
     <div class="alert-item">
-      <div class="alert-title">⚠ CDD — Seuil dépassé (Risque Étiage)</div>
-      <div class="alert-detail">Séquence sèche : 78j · Seuil : 70j · Impact sur le débit médian Q₅₀</div>
+      <div class="alert-title">⚠ CDD — Seuil dépassé</div>
+      <div class="alert-detail">Séquence sèche : 78j · Seuil : 70j · Impact Q₅₀ · ρ=−0.497</div>
     </div>
     <div class="normal-item">
       <div class="normal-title">✓ TR — Normal</div>
-      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Nuits tropicales : 42 · Seuil : 50</div>
+      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Nuits tropicales : 42 · Seuil : 50 · Q₅ non menacé</div>
+    </div>
+    <div class="normal-item">
+      <div class="normal-title">✓ PRCPTOT — Normal</div>
+      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Cumul : 1124 mm · Dans les limites historiques</div>
     </div>
     <div class="card">
-      <div class="card-title">Statistiques des Débits à Bonou</div>
+      <div class="card-title">Débits à Bonou</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-top:4px;">
         <div style="background:#0d2235;padding:10px;border-radius:8px;">
           <div style="color:#6a9080;font-size:10px;">Moyenne</div>
@@ -1148,49 +974,66 @@ function screenAlertes() {
           <div style="color:#6a9080;font-size:10px;">Maximum</div>
           <div style="font-weight:700;color:#e06060;font-size:16px;">${STATS_DEBIT.max} m³/s</div>
         </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Minimum</div>
+          <div style="font-weight:700;color:#e0a060;font-size:16px;">${STATS_DEBIT.min} m³/s</div>
+        </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Écart-type</div>
+          <div style="font-weight:700;color:#8ab5a5;font-size:16px;">${STATS_DEBIT.ecart_type}</div>
+        </div>
       </div>
     </div>
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
 function screenProfil() {
   const u = state.user || {};
-  const isDecideur = u.role === 'décideur';
-  const avatarContent = u.avatar_url ? `<img src="${u.avatar_url}" alt="Avatar"/>` : `👤`;
-
   return `
   ${header("Mon profil","Informations du compte")}
   <div class="content">
     <div class="card" style="text-align:center;padding:24px 16px;">
-      <div class="avatar-wrap">
-        <div class="profile-avatar">${state.avatarUploading ? `…` : avatarContent}</div>
-        <div class="avatar-edit-btn" onclick="document.getElementById('avatar-input').click()">✏️</div>
-        <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="handleAvatarChange(event)"/>
-      </div>
+      <div class="profile-avatar">👤</div>
       <div class="profile-name">${u.nom || "Utilisateur"}</div>
-      <div class="profile-role ${isDecideur?'decideur':''}">${u.role || "scientifique"}</div>
+      <div class="profile-role">${u.role || "scientifique"}</div>
+      <div class="profile-email">${u.email || ""}</div>
     </div>
     <div class="card">
-      <div class="card-title">Informations Compte</div>
+      <div class="card-title">Informations</div>
       <div style="font-size:12px;color:#8ab5a5;line-height:2;">
         <div style="display:flex;justify-content:space-between;">
           <span>Institution</span>
-          <span style="color:#e8f4f0;">${u.institution || "Non spécifiée"}</span>
+          <span style="color:#e8f4f0;">${u.institution || "ENSGMM/UNSTIM"}</span>
         </div>
         <div style="display:flex;justify-content:space-between;">
-          <span>Type d'accès</span>
-          <span style="color:${isDecideur?'#e0a060':'#4ecba0'};text-transform:capitalize;">${u.role}</span>
+          <span>Rôle</span>
+          <span style="color:#4ecba0;">${u.role || "scientifique"}</span>
         </div>
         <div style="display:flex;justify-content:space-between;">
-          <span>Bassin suivi</span>
-          <span style="color:#e8f4f0;">Ouémé à Bonou</span>
+          <span>Bassin étudié</span>
+          <span style="color:#e8f4f0;">Ouémé · Bonou</span>
         </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Période</span>
+          <span style="color:#e8f4f0;">1991–2020</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Accès rapide</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${["OS1","OS2","OS3","Alertes"].map((m,i)=>`
+        <div onclick="setState({screen:'${["os1","os2","os3","alertes"][i]}'})"
+             style="background:#0d2235;border:1px solid #234055;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+          <div style="font-size:18px;">${["📊","〰️","🔗","🔔"][i]}</div>
+          <div style="font-size:11px;color:#4ecba0;font-weight:600;margin-top:4px;">${m}</div>
+        </div>`).join("")}
       </div>
     </div>
     <button class="btn-danger" onclick="doLogout()">🚪 Se déconnecter</button>
   </div>
-  ${drawerMenu()}`;
+  ${bottomNav()}`;
 }
 
 function screenStations() {
@@ -1205,6 +1048,13 @@ function screenStations() {
              onclick="setState({selectedStation:'${s}'})">${s}</div>`).join("")}
       </div>
     </div>
+    <div class="card">
+      <div class="card-title">Stations synoptiques (4)</div>
+      <div class="stations-grid">
+        ${["BOHICON","COTONOU","PARAKOU","SAVÈ"].map(s=>`
+        <div class="station-item" style="border-color:#e0a060;color:#e0a060;">${s}</div>`).join("")}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1212,10 +1062,25 @@ function screenImport() {
   return `
   ${header("Import des données","Charger un nouveau jeu de données", true)}
   <div class="content">
+    <div class="card">
+      <div class="card-title">Format attendu</div>
+      <div style="font-size:12px;color:#8ab5a5;line-height:1.8;">
+        • Fichier Excel (.xlsx)<br>
+        • Colonnes : Date · Station · Variable<br>
+        • Date au format JJ/MM/AAAA<br>
+        • Pas de temps : journalier<br>
+        • Période minimale : 20 ans
+      </div>
+    </div>
     <div class="card" style="border:2px dashed #234055;background:#0d1b2a;text-align:center;padding:32px 16px;">
       <div style="font-size:36px;margin-bottom:8px;">📂</div>
-      <div style="font-size:13px;color:#4ecba0;font-weight:600;">Glisser un fichier Excel (.xlsx)</div>
+      <div style="font-size:13px;color:#4ecba0;font-weight:600;">Glisser un fichier ici</div>
+      <div style="font-size:11px;color:#4a6a5a;margin-top:4px;">ou cliquer pour sélectionner</div>
     </div>
+    <button class="btn-primary" style="margin-top:8px;"
+      onclick="alert('Fonctionnalité disponible en version déployée')">
+      Importer et analyser
+    </button>
   </div>`;
 }
 
