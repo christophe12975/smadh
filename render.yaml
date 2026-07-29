@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: smadh
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npx serve -s dist
