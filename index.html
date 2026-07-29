@@ -458,7 +458,7 @@ function header(title, sub, showBack=false, showMenu=false) {
 function screenAccueil() {
   return `
   <div class="basin-hero" style="background-image:linear-gradient(180deg, rgba(13,27,42,0.55) 0%, rgba(13,27,42,0.85) 100%), url('${IMG_BASE}/bassin.png'); background-size:cover; background-position:center;">
-    <div class="basin-label">Bassin versant de l'Ouémé · 25 stations pluviométriques</div>
+    <div class="basin-label">Bassin versant de l'Ouémé · 25 stations pluviométriques . 4 stations synoptiques</div>
   </div>
   ${header("HydroClim Analyzer","Bassin versant de l'Ouémé à Bonou")}
   <div class="content">
@@ -477,9 +477,9 @@ function screenAccueil() {
         <div><div style="font-size:20px;">💧</div><div style="color:#4ecba0;font-weight:700;">30</div><div style="color:#6a9080;">Années</div></div>
       </div>
     </div>
-    <button class="btn-primary" onclick="setState({screen:'auth'})">Accéder à l'Espace Sécurisé</button>
+    <button class="btn-primary" onclick="setState({screen:'auth'})">Connexion</button>
     <div style="text-align:center;font-size:11px;color:#4a6a5a;margin-top:12px;">
-      ENSGMM/UNSTIM · Mémoire Ingénieur · 2025
+      @christophe vodounou 
     </div>
   </div>`;
 }
