@@ -1,120 +1,64 @@
 import os
+import pandas as pd
+from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
-
 from data import donnees
-import pandas as pd
 
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 
-load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
 
-
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
-
-
+# Initialisation conditionnelle du client
+if api_key:
+    client = OpenAI(api_key=api_key)
+else:
+    client = None
+    print("⚠️  OPENAI_API_KEY non trouvée dans .env - Le chatbot sera désactivé mais la prédiction fonctionnera.")
 
 def resume_donnees():
+    try:
+        debit = donnees["debit"].copy()
+        indices = donnees.get("indices_climatiques", pd.DataFrame()).copy()
 
-    debit = donnees["debit"].copy()
-    indices = donnees["indices_climatiques"].copy()
+        col_debit = next((c for c in ['Débit', 'Debit', 'Q'] if c in debit.columns), debit.columns[0])
+        debit["Q_num"] = pd.to_numeric(debit[col_debit], errors="coerce")
+        debit_clean = debit.dropna(subset=["Q_num"])
 
+        moyenne = debit_clean["Q_num"].mean()
+        maximum = debit_clean["Q_num"].max()
+        minimum = debit_clean["Q_num"].min()
 
-    debit["Débit"] = pd.to_numeric(
-        debit["Débit"],
-        errors="coerce"
-    )
+        col_date = next((c for c in ['Date', 'date', 'DATE'] if c in debit_clean.columns), debit_clean.columns[0])
+        annee = pd.to_datetime(debit_clean.loc[debit_clean["Q_num"].idxmax()][col_date]).year
 
-    debit = debit.dropna(
-        subset=["Débit"]
-    )
-
-
-    moyenne = debit["Débit"].mean()
-
-    maximum = debit["Débit"].max()
-
-    minimum = debit["Débit"].min()
-
-
-    ligne_max = debit.loc[
-        debit["Débit"].idxmax()
-    ]
-
-
-    annee = pd.to_datetime(
-        ligne_max["Date"]
-    ).year
-
-
-
-    contexte = f"""
-
+        return f"""
 Tu es l'assistant hydrologique SMADH.
-
-Tu analyses les données de Bonou (Bénin)
-sur la période 1991-2020.
-
-Informations disponibles :
-
-- Nombre d'observations débit : {len(debit)}
+Bassin versant de l'Ouémé à la station de Bonou (1991-2020).
+- Observations débit : {len(debit_clean)}
 - Débit moyen : {moyenne:.2f} m³/s
-- Débit maximum : {maximum:.2f} m³/s
-- Année du débit maximum : {annee}
-- Débit minimum : {minimum:.2f} m³/s
-- Nombre d'années d'indices climatiques : {len(indices)}
-
+- Débit max ({annee}) : {maximum:.2f} m³/s
+- Débit min : {minimum:.2f} m³/s
+- Années d'indices climatiques : {len(indices)}
 Réponds toujours en français.
-Explique clairement comme un expert hydrologue.
 """
-
-    return contexte
-
-
-
-
+    except Exception:
+        return "Tu es l'assistant hydrologique SMADH pour Bonou (Bénin). Réponds en français."
 
 def demander_ia(message):
-
-
-    contexte = resume_donnees()
-
+    if client is None:
+        return "L'assistant IA n'est pas configuré (clé OPENAI_API_KEY manquante dans le fichier .env)."
 
     try:
-
-
         response = client.chat.completions.create(
-
-            model="gpt-4.1-mini",
-
+            model="gpt-4o-mini",
             messages=[
-
-                {
-                    "role":"system",
-                    "content":contexte
-                },
-
-                {
-                    "role":"user",
-                    "content":message
-                }
-
+                {"role": "system", "content": resume_donnees()},
+                {"role": "user", "content": message}
             ],
-
             temperature=0.3
-
         )
-
-
         return response.choices[0].message.content
-
-
-
     except Exception as e:
-
-
-        return (
-            "Erreur de connexion avec l'intelligence artificielle : "
-            + str(e)
-        )
+        return f"Erreur de connexion IA : {str(e)}"

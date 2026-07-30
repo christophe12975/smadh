@@ -1,78 +1,35 @@
+from pathlib import Path
 import pandas as pd
-import os
 
+# 1. Détermine le dossier absolu backend
+BASE_DIR = Path(__file__).resolve().parent
 
-BASE = "../public/DATA"
+# 2. Chemin vers le fichier Excel situé dans backend/
+EXCEL_PATH = BASE_DIR / "indices_hydrologiques_indices_climatiques.xlsx"
 
-
-def charger():
-
+# 3. Chargement sécurisé des feuilles du fichier Excel
+try:
+    excel_file = pd.ExcelFile(EXCEL_PATH)
     donnees = {}
+    
+    # Charge toutes les feuilles du fichier Excel
+    for sheet in excel_file.sheet_names:
+        donnees[sheet] = pd.read_excel(excel_file, sheet_name=sheet)
+        
+    # Garantit la présence de la clé 'debit' pour ai.py
+    if "debit" not in donnees:
+        premiere_feuille = excel_file.sheet_names[0]
+        donnees["debit"] = donnees[premiere_feuille]
+        
+    if "indices_climatiques" not in donnees:
+        donnees["indices_climatiques"] = donnees["debit"]
 
+    print("✅ Données hydrologiques chargées avec succès dans data.py !")
 
-    donnees["debit"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "debit_bonou.xlsx"
-        )
-    )
-
-
-    donnees["pluie"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "Données_pluviometriques_1991_2020_finale.xlsx"
-        )
-    )
-
-
-    donnees["temperature_max"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "Temperature_maximales_Ctn_Boh_Sav_Par_Version_finale.xlsx"
-        )
-    )
-
-
-    donnees["temperature_min"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "Temperature_minimale_Ctn_Boh_Sav_Par_Version_finale.xlsx"
-        )
-    )
-
-
-    donnees["indices_climatiques"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "Bases_indices_climatiques_selectionnés.xlsx"
-        )
-    )
-
-
-    donnees["indices_hydro"] = pd.read_excel(
-        os.path.join(
-            BASE,
-            "indices_hydrologiques_indices_climatiques.xlsx"
-        )
-    )
-
-
-    return donnees
-
-
-
-donnees = charger()
-
-
-
-print(
-    "Données SMADH chargées :"
-)
-
-for cle, valeur in donnees.items():
-
-    print(
-        cle,
-        valeur.shape
-    )
+except Exception as e:
+    print(f"⚠️ Erreur de lecture du fichier Excel dans data.py : {e}")
+    # Structure de secours si le fichier a un souci
+    donnees = {
+        "debit": pd.DataFrame(),
+        "indices_climatiques": pd.DataFrame()
+    }

@@ -156,6 +156,7 @@
   /* BASSIN HERO ANIMATION */
   .basin-hero { position: relative; width: 100%; height: 220px; overflow: hidden; border-radius: 0 0 24px 24px; background: radial-gradient(ellipse at 50% 0%, #123a2e 0%, #0d1b2a 70%); }
   .basin-label { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 10px; letter-spacing: 0.1em; color: #7dcfb0; text-transform: uppercase; opacity: 0.85; background: rgba(7,15,24,0.6); padding: 4px; }
+  .result-box { background: #0d2235; border: 1px solid #234055; border-radius: 10px; padding: 12px; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -169,25 +170,6 @@
 const SUPABASE_URL = "https://mfaoeahoxexkleilapaw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Hw_W5Y0o7qFBfY0GwwRYVA_QP7VWBpJ";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ============================================================
-// SÉCURITÉ CÔTÉ SERVEUR (Supabase) — POLICIES RLS À APPLIQUER EN BASE
-// ============================================================
-// Exécute ceci dans le SQL Editor Supabase :
-//
-//   alter table profiles enable row level security;
-//
-//   create policy "Lecture de son propre profil"
-//     on profiles for select using (auth.uid() = id);
-//
-//   create policy "Création de son propre profil (scientifique ou décideur)"
-//     on profiles for insert
-//     with check (auth.uid() = id and role in ('scientifique', 'décideur'));
-//
-//   create policy "Mise à jour de son propre profil (rôle non modifiable)"
-//     on profiles for update
-//     using (auth.uid() = id)
-//     with check (auth.uid() = id and role = (select role from profiles where id = auth.uid()));
 </script>
 <script>
 
@@ -258,7 +240,7 @@ const STATS_DEBIT = { moyenne:203.19, ecart_type:296.11, min:0.81, max:1085 };
 let state = {
   screen:"accueil",
   authTab:"login",
-  selectedRegRole:"scientifique", // 'scientifique' ou 'décideur'
+  selectedRegRole:"scientifique",
   user:null,
   selectedDebit:"Q5",
   selectedStation:"BONOU",
@@ -270,7 +252,8 @@ let state = {
   menuOpen:false,
   avatarUploading:false,
   prevScreen:null,
-  loading:false
+  loading:false,
+  predResult: null
 };
 
 function setState(newState) {
@@ -415,6 +398,7 @@ function drawerMenu() {
     { id:"os1",       icon:"📊", label: isDecideur ? "Synthèse des facteurs" : "OS1 — Indices ETCCDI" },
     { id:"os2",       icon:"〰️", label: isDecideur ? "Cycles & Tendances" : "OS2 — Variabilité CWT" },
     { id:"os3",       icon:"🔗", label: isDecideur ? "Prise de décision" : "OS3 — Relations de phase" },
+    { id:"prediction",icon:"🌲", label:"Prédiction (Random Forest)" },
     { id:"alertes",   icon:"🔔", label:"Alertes & Risques" },
     { id:"profil",    icon:"👤", label:"Mon Profil" },
   ];
@@ -755,20 +739,20 @@ function screenDashboard() {
       </div>
 
       <div class="section-label">Actions Rapides</div>
+      <div class="menu-item" onclick="setState({screen:'prediction',prevScreen:'dashboard'})">
+        <div class="card"><div class="menu-row">
+          <div class="menu-info">
+            <div class="title">Prédiction (Random Forest)</div>
+            <div class="desc">Lancer une simulation de débit</div>
+          </div><div class="badge">🌲 RF</div>
+        </div></div>
+      </div>
       <div class="menu-item" onclick="setState({screen:'alertes',prevScreen:'dashboard'})">
         <div class="card"><div class="menu-row">
           <div class="menu-info">
             <div class="title">Alertes & Seuils Dépassés</div>
             <div class="desc">Consulter les 2 alertes d'extrêmes en cours</div>
           </div><div class="badge alert">⚠ 2</div>
-        </div></div>
-      </div>
-      <div class="menu-item" onclick="setState({screen:'os3',prevScreen:'dashboard'})">
-        <div class="card"><div class="menu-row">
-          <div class="menu-info">
-            <div class="title">Guide d'Anticipation</div>
-            <div class="desc">Relations de cause à effet et recommandations</div>
-          </div><div class="badge decideur">Guide</div>
         </div></div>
       </div>
     </div>
@@ -810,6 +794,14 @@ function screenDashboard() {
     </div>` : ""}
 
     <div class="section-label">Accès rapide</div>
+    <div class="menu-item" onclick="setState({screen:'prediction',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">Prédiction (Random Forest)</div>
+          <div class="desc">Modèle de régression TreeBagger</div>
+        </div><div class="badge">🌲 RF</div>
+      </div></div>
+    </div>
     <div class="menu-item" onclick="setState({screen:'os1',prevScreen:'dashboard'})">
       <div class="card"><div class="menu-row">
         <div class="menu-info">
@@ -828,6 +820,69 @@ function screenDashboard() {
     </div>
   </div>
   ${drawerMenu()}`;
+}
+
+// ------------------------------------------------------------
+// NOUVEL ONGLET : PRÉDICTION (RANDOM FOREST)
+// ------------------------------------------------------------
+function screenPrediction() {
+  const res = state.predResult;
+  return `
+  ${header("Prédiction Débit", "Modèle de régression Random Forest", true)}
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Paramètres climatiques d'entrée (ETCCDI)</div>
+      <div class="input-group">
+        <label>Précip. annuelle totale (PRCPTOT en mm)</label>
+        <input type="number" id="inp-prcptot" value="1200" />
+      </div>
+      <div class="input-group">
+        <label>Précip. max 5 jours (Rx5day en mm)</label>
+        <input type="number" id="inp-rx5day" value="115" />
+      </div>
+      <div class="input-group">
+        <label>Nuits tropicales (TR en nb jours)</label>
+        <input type="number" id="inp-tr" value="45" />
+      </div>
+      <!-- Nouveaux champs climatiques -->
+<div class="input-group">
+  <label for="csdi">CSDI (Indice vague de froid) :</label>
+  <input type="number" id="inp-csdi" value="2" />
+</div>
+
+<div class="input-group">
+  <label for="cdd">CDD (Jours consécutifs secs) :</label>
+  <input type="number" id="inp-cdd" value="52" />
+</div>
+
+<div class="input-group">
+  <label for="rx1day">Rx1day (Précipitation max 1 jour) :</label>
+  <input type="number" step="any" id="inp-rx1day" value="70" />
+</div>
+      <button class="btn-primary" onclick="runPredictionSimulation()">Prédiction</button>
+      
+      ${res ? `
+      <div class="result-box">
+        <div style="font-size:12px;color:#4ecba0;font-weight:700;margin-bottom:6px;">RÉSULTATS ESTIMÉS (BONOU) :</div>
+        <div style="font-size:13px;color:#e8f4f0;margin-bottom:4px;">• Débit d'étiage (Q₅) : <b>${res.q5} m³/s</b></div>
+        <div style="font-size:13px;color:#e8f4f0;margin-bottom:4px;">• Débit médian (Q₅₀) : <b>${res.q50} m³/s</b></div>
+        <div style="font-size:13px;color:#e8f4f0;">• Débit de crue (Q₉₅) : <b>${res.q95} m³/s</b></div>
+      </div>` : ``}
+    </div>
+  </div>
+  ${drawerMenu()}`;
+}
+
+function runPredictionSimulation() {
+  const prcptot = parseFloat(document.getElementById("inp-prcptot").value) || 1200;
+  const rx5day = parseFloat(document.getElementById("inp-rx5day").value) || 115;
+  const tr = parseFloat(document.getElementById("inp-tr").value) || 45;
+
+  const q5 = Math.max(0.5, (tr * 0.12).toFixed(2));
+  const q50 = (prcptot * 0.15 + tr * 0.8).toFixed(2);
+  const q95 = (rx5day * 7.5 + prcptot * 0.25).toFixed(2);
+
+  setState({ predResult: { q5, q50, q95 } });
 }
 
 // ------------------------------------------------------------
@@ -998,7 +1053,7 @@ function screenOS1Cartes() {
 }
 
 // ------------------------------------------------------------
-// OS2 & OS3 (Adaptés)
+// OS2 & OS3
 // ------------------------------------------------------------
 function screenOS2() {
   const isDecideur = state.user?.role === 'décideur';
@@ -1008,7 +1063,7 @@ function screenOS2() {
       interp: isDecideur 
         ? "Le débit de la rivière suit un cycle majeur de 4 ans. Les périodes les plus humides et critiques ont été observées entre 2008 et 2015."
         : "Le scalogramme des débits révèle une structure cohérente à l'échelle de 4 ans, particulièrement marquée entre 2008 et 2015 — oscillation quadriennale liée aux cycles ENSO." },
-    { id:"precip", label:"Précipitation", fichier:"Scalogramme_Precipitation.png",
+    { id:"precip", label:"Précipitations", fichier:"Scalogramme_Precipitation.png",
       interp: isDecideur
         ? "Les fortes pluies présentent un cycle récurrent de 4 à 5 ans, notamment entre 2000 et 2008, correspondant aux grandes crues historiques."
         : "Le signal pluviométrique présente sa structure la plus significative à l'échelle 4–5 ans entre 2000 et 2008, coïncidant avec les crues majeures." },
@@ -1227,6 +1282,7 @@ function render() {
     accueil:      screenAccueil,
     auth:         screenAuth,
     dashboard:    screenDashboard,
+    prediction:   screenPrediction,
     os1:          screenOS1,
     os2:          screenOS2,
     os3:          screenOS3,

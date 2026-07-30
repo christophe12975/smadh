@@ -203,6 +203,7 @@ function Login({ onLogin }) {
 function Dashboard({ role, go, indices }) {
   const nbAlertes = seuils.filter(s => s.statut === "dépassé").length;
   const items = [
+    { key: "predict", label: "Prédiction en temps réel", desc: "Modèle RF & indices climatiques", n: "API" },
     { key: "data", label: "Consultation des données", desc: "Séries climatiques et débits", n: "M2" },
     { key: "os1", label: "Analyse des extrêmes", desc: "Indices ETCCDI · corrélation de Spearman", n: "OS1" },
     { key: "wavelet", label: "Réponse des débits", desc: "Transformée en ondelettes continue", n: "OS2" },
@@ -258,6 +259,136 @@ function Dashboard({ role, go, indices }) {
           </div>
         </Card>
       ))}
+    </Shell>
+  );
+}
+
+function PredictionView({ back }) {
+  const [form, setForm] = useState({
+    PRCPTOT: "", Rx5day: "", TR: "", CSDI: "", CDD: "", Rx1day: ""
+  });
+  const [resultat, setResultat] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [historique, setHistorique] = useState([]);
+
+  const inputStyle = {
+    width: "100%", padding: "10px 12px", borderRadius: 8,
+    border: "1px solid #d3d1c7", fontSize: 14, boxSizing: "border-box",
+    background: "#fff", color: ink, outline: "none", marginTop: 4
+  };
+
+  const labelStyle = {
+    fontSize: 12, fontWeight: 600, color: slate, display: "block", marginBottom: 2
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      const response = await fetch(`${apiUrl}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          PRCPTOT: parseFloat(form.PRCPTOT),
+          Rx5day: parseFloat(form.Rx5day),
+          TR: parseFloat(form.TR),
+          CSDI: parseFloat(form.CSDI),
+          CDD: parseFloat(form.CDD),
+          Rx1day: parseFloat(form.Rx1day)
+        })
+      });
+      const data = await response.json();
+      setResultat(data);
+
+      const nouvelleLigne = {
+        Date: new Date().toLocaleString(),
+        PRCPTOT: form.PRCPTOT,
+        Rx5day: form.Rx5day,
+        TR: form.TR,
+        CSDI: form.CSDI,
+        CDD: form.CDD,
+        Rx1day: form.Rx1day,
+        Q5: data.Q5 ?? data.q5 ?? "",
+        Q50: data.Q50 ?? data.q50 ?? "",
+        Q95: data.Q95 ?? data.q95 ?? ""
+      };
+      setHistorique(prev => [...prev, nouvelleLigne]);
+
+    } catch (err) {
+      console.error("Erreur lors de la prédiction", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const telechargerExcel = () => {
+    if (historique.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(historique);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Prédictions");
+    XLSX.writeFile(workbook, "historique_predictions.xlsx");
+  };
+
+  const champsConfig = [
+    { name: "PRCPTOT", label: "Précip. annuelle totale (PRCPTOT en mm)" },
+    { name: "Rx5day", label: "Précip. max 5 jours (Rx5day en mm)" },
+    { name: "TR", label: "Nuits tropicales (TR en nb jours)" },
+    { name: "CSDI", label: "CSDI (Indice vague de froid)" },
+    { name: "CDD", label: "CDD (Jours consécutifs secs)" },
+    { name: "Rx1day", label: "Rx1day (Précipitation max 1 jour)" },
+  ];
+
+  return (
+    <Shell title="Prédiction de Débit" subtitle="Modèle Random Forest" onBack={back}>
+      <Card>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: ink }}>Paramètres climatiques d'entrée (ETCCDI)</div>
+          
+          {champsConfig.map((champ) => (
+            <div key={champ.name} className="form-group">
+              <label style={labelStyle}>{champ.label}</label>
+              <input
+                type="number"
+                step="any"
+                name={champ.name}
+                value={form[champ.name]}
+                onChange={handleChange}
+                required
+                style={inputStyle}
+              />
+            </div>
+          ))}
+
+          <button type="submit" style={{ marginTop: 10, padding: "12px", background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+            {loading ? "Calcul en cours..." : "Prédiction"}
+          </button>
+        </form>
+      </Card>
+
+      {resultat && (
+        <Card style={{ background: "#e1f5ee", border: `1px solid ${tealLight}` }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: teal, marginBottom: 6 }}>RÉSULTATS ESTIMÉS (BONOU) :</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+            • Débit d'étiage ($Q_5$) : <b>{resultat.Q5 ?? resultat.q5 ?? "—"} m³/s</b><br />
+            • Débit médian ($Q_{50}$) : <b>{resultat.Q50 ?? resultat.q50 ?? "—"} m³/s</b><br />
+            • Débit de crue extrême ($Q_{95}$) : <b>{resultat.Q95 ?? resultat.q95 ?? "—"} m³/s</b>
+          </div>
+        </Card>
+      )}
+
+      {historique.length > 0 && (
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Historique ({historique.length} simulation(s))</div>
+          <button onClick={telechargerExcel} style={{ width: "100%", padding: "10px", background: ink, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+            📥 Télécharger le fichier Excel complet
+          </button>
+        </Card>
+      )}
     </Shell>
   );
 }
@@ -437,110 +568,109 @@ function Alerts({ back }) {
 }
 
 function DecisionGuide({ back, indices }) {
+  // Fonction d'export / impression PDF native du navigateur
   const handleExportPDF = () => {
     window.print();
   };
 
   return (
     <Shell title="Guide de Décision" subtitle="Comprendre et anticiper les impacts" onBack={back}>
-      {/* Synthèse d'Anticipation */}
-      <Card style={{ background: teal, color: "#fff" }}>
-        <div style={{ fontSize: 11, color: tealLight, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-          Synthèse d'Anticipation · Bonou
-        </div>
-        <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, color: "#e1f5ee" }}>
-          Ce module traduit les indices de météo extrême (ETCCDI) en règles opérationnelles pour la gestion des risques hydrologiques.
-        </div>
-      </Card>
-
-      {/* Stratégies de Prévention */}
-      <Card>
-        <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 12 }}>
-          🛡️ Stratégies de Prévention
-        </div>
-
-        {/* Règle 1 : Crue */}
-        <div style={{
-          background: "#e1f5ee", padding: "12px", borderRadius: 8, marginBottom: 10,
-          borderLeft: `4px solid ${teal}`
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: teal }}>
-            Pluies intenses répétées (Rx5day)
+      {/* Conteneur avec espacement en bas pour ne pas cacher le contenu sous le bouton fixe */}
+      <div style={{ paddingBottom: 70 }}>
+        <Card style={{ background: teal, color: "#fff" }}>
+          <div style={{ fontSize: 11, color: tealLight, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+            Synthèse d'Anticipation · Bonou
           </div>
-          <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
-            En cas de cumul élevé sur 5 jours, <b>déclencher immédiatement le niveau de pré-alerte crue à la station de Bonou</b>.
+          <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, color: "#e1f5ee" }}>
+            Ce module traduit les indices de météo extrême (ETCCDI) en règles opérationnelles pour la gestion des risques hydrologiques.
           </div>
-        </div>
+        </Card>
 
-        {/* Règle 2 : Sécheresse / Étiage */}
-        <div style={{
-          background: "#fcebeb", padding: "12px", borderRadius: 8,
-          borderLeft: "4px solid #a32d2d"
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#791f1f" }}>
-            Sécheresse prolongée (CDD &gt; 70 jours)
+        <Card>
+          <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 12 }}>
+            🛡️ Stratégies de Prévention
           </div>
-          <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
-            En période de jours secs consécutifs élevés, <b>restreindre préventivement les prélèvements d'eau</b> pour préserver le débit d'étiage (Q<sub>95</sub>).
+
+          <div style={{
+            background: "#e1f5ee", padding: "12px", borderRadius: 8, marginBottom: 10,
+            borderLeft: `4px solid ${teal}`
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: teal }}>
+              Pluies intenses répétées (Rx5day)
+            </div>
+            <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
+              En cas de cumul élevé sur 5 jours, <b>déclencher immédiatement le niveau de pré-alerte crue à la station de Bonou</b>.
+            </div>
           </div>
-        </div>
-      </Card>
 
-      {/* Tableau Récapitulatif Cause à Effet */}
-      <Card>
-        <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 10 }}>
-          📊 Tableau Récapitulatif Cause ➔ Effet
-        </div>
+          <div style={{
+            background: "#fcebeb", padding: "12px", borderRadius: 8,
+            borderLeft: "4px solid #a32d2d"
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#791f1f" }}>
+              Sécheresse prolongée (CDD &gt; 70 jours)
+            </div>
+            <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
+              En période de jours secs consécutifs élevés, <b>restreindre préventivement les prélèvements d'eau</b> pour préserver le débit d'étiage ($Q_{95}$).
+            </div>
+          </div>
+        </Card>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ background: bg, textAlign: "left", color: slate }}>
-                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Cause (Indice)</th>
-                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Effet Attendu</th>
-                <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Recommandation</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>
-                  Pluies 5 jours (Rx5day)
-                </td>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: "#a32d2d" }}>
-                  Crue à Bonou (réponse rapide)
-                </td>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>
-                  Suivi pluviométrique strict
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>
-                  Sécheresses longues (CDD)
-                </td>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: amber }}>
-                  Baisse des réserves & étiage
-                </td>
-                <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>
-                  Plan de soutien d'étiage
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Card>
+        <Card>
+          <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 10 }}>
+            📊 Tableau Récapitulatif Cause ➔ Effet
+          </div>
 
-      {/* Bouton Générateur de PDF */}
-      <button
-        onClick={handleExportPDF}
-        style={{
-          width: "100%", padding: "12px 0", background: ink, color: "#fff",
-          border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-        }}
-      >
-        📄 Imprimer / Télécharger la Fiche Décisionnelle (PDF)
-      </button>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: bg, textAlign: "left", color: slate }}>
+                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Cause (Indice)</th>
+                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Effet Attendu</th>
+                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Recommandation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>Pluies 5 jours (Rx5day)</td>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: "#a32d2d" }}>Crue à Bonou (réponse rapide)</td>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>Suivi pluviométrique strict</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>Sécheresses longues (CDD)</td>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: amber }}>Baisse des réserves & étiage</td>
+                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>Plan de soutien d'étiage</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
+      {/* Bouton fixe en bas de l'écran */}
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: "12px 20px",
+        background: "#fff",
+        boxShadow: "0 -4px 10px rgba(0,0,0,0.1)",
+        zIndex: 100,
+        maxWidth: 420,
+        margin: "0 auto"
+      }}>
+        <button
+          onClick={handleExportPDF}
+          style={{
+            width: "100%", padding: "12px 0", background: ink, color: "#fff",
+            border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+          }}
+        >
+          📄 Imprimer / Télécharger la Fiche Décisionnelle (PDF)
+        </button>
+      </div>
     </Shell>
   );
 }
@@ -576,6 +706,7 @@ export default function App() {
     return <Dashboard role={role} go={(k) => setScreen(k)} indices={indices} />;
   }
 
+  if (screen === "predict") return <PredictionView back={() => setScreen("dashboard")} />;
   if (screen === "data") return <DataView back={() => setScreen("dashboard")} />;
   if (screen === "os1") return <OS1 back={() => setScreen("dashboard")} indices={indices} source={source} />;
   if (screen === "wavelet") return <Wavelet back={() => setScreen("dashboard")} />;

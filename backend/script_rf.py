@@ -1,156 +1,235 @@
-import pandas as pd
-import numpy as np
+from pathlib import Path
+import os
+import matplotlib
+
+# Désactive l'ouverture des fenêtres graphiques pour éviter tout blocage
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_squared_error
-from pathlib import Path
-import pandas as pd
 
-# Détermine automatiquement le dossier où se trouve script_rf.py (dossier backend)
+# Dossier backend
 BASE_DIR = Path(__file__).resolve().parent
 
+def calculer_indices_climatiques(series_p):
+    """
+    Calcule les indices CSDI, CDD et Rx1day à partir d'une série temporelle de précipitation.
+    - Rx1day : Maximum journalier sur la période globale ou par fênetre glissante.
+    - CDD : Nombre maximal de jours consécutifs secs (précipitation < 1 mm).
+    - CSDI : Approche simplifiée basée sur des séquences consécutives humides/sèches ou seuils.
+    """
+    # Rx1day : Précipitation maximale sur 1 jour (fenêtre glissante ou globale)
+    rx1day = series_p.rolling(window=30, min_periods=1).max()
+    
+    # CDD (Consecutive Dry Days) : Jours consécutifs avec < 1 mm de pluie
+    is_dry = series_p < 1.0
+    cdd = is_dry.astype(int).groupby((~is_dry).cumsum()).sum()
+    
+    # CSDI (Cold Spell Duration Index ou équivalent d'indice de persistance de séquence)
+    # Calculé ici sous forme de moyenne glissante de persistance humide/sèche pour alimenter le modèle
+    csdi = series_p.rolling(window=5, min_periods=1).apply(lambda x: np.sum(x > 5.0), raw=True)
+    
+    return rx1day, cdd, csdi
 
-# Importation
-df_debit  = pd.read_excel(file_debit, parse_dates=['Date'])
-df_precip = pd.read_excel(file_precip, parse_dates=['Date'])
-df_tmin   = pd.read_excel(file_tmin, parse_dates=['Date'])
-df_tmax   = pd.read_excel(file_tmax, parse_dates=['Date'])
-# ==============================================================================
-# 1. CHARGEMENT ET PREPARATION DES DONNEES
-# ==============================================================================
-file_debit  = BASE_DIR / 'debit_bonou.xlsx'
-file_precip = BASE_DIR / 'Données_pluviometriques_1991_2020_finale.xlsx'
-file_tmin   = BASE_DIR / 'Temperature_minimale_Ctn_Boh_Sav_Par_Version_finale.xlsx'
-file_tmax   = BASE_DIR / 'Temperature_maximales_Ctn_Boh_Sav_Par_Version_finale.xlsx'
+def executer_script():
+    print("🚀 Chargement des fichiers Excel et préparation des données...")
 
-# Importation et conversion automatique des dates
-df_debit  = pd.read_excel(file_debit, parse_dates=['Date'])
-df_precip = pd.read_excel(file_precip, parse_dates=['Date'])
-df_tmin   = pd.read_excel(file_tmin, parse_dates=['Date'])
-df_tmax   = pd.read_excel(file_tmax, parse_dates=['Date'])
+    # ==============================================================================
+    # 1. CHARGEMENT ET PREPARATION DES DONNEES
+    # ==============================================================================
+    file_debit  = BASE_DIR / 'debit_bonou.xlsx'
+    file_precip = BASE_DIR / 'Données_pluviometriques_1991_2020_finale.xlsx'
+    file_tmin   = BASE_DIR / 'Temperature_minimale_Ctn_Boh_Sav_Par_Version_finale.xlsx'
+    file_tmax   = BASE_DIR / 'Temperature_maximales_Ctn_Boh_Sav_Par_Version_finale.xlsx'
 
-# Renommer la colonne débit de manière uniforme
-df_debit.columns = ['Date', 'Q']
+    # Importation et conversion automatique des dates
+    df_debit  = pd.read_excel(file_debit, parse_dates=['Date'])
+    df_precip = pd.read_excel(file_precip, parse_dates=['Date'])
+    df_tmin   = pd.read_excel(file_tmin, parse_dates=['Date'])
+    df_tmax   = pd.read_excel(file_tmax, parse_dates=['Date'])
 
-# Extraction des stations
-stations_p = [col for col in df_precip.columns if col != 'Date']
-stations_t = [col for col in df_tmin.columns if col != 'Date']
+    # Renommer la colonne débit
+    df_debit.columns = ['Date', 'Q']
 
-# Renommage des températures pour éviter les doublons lors de la fusion
-df_tmin_renamed = df_tmin.rename(columns={col: f"{col}_tmin" for col in stations_t})
-df_tmax_renamed = df_tmax.rename(columns={col: f"{col}_tmax" for col in stations_t})
+    # Extraction des stations
+    stations_p = [col for col in df_precip.columns if col != 'Date']
+    stations_t = [col for col in df_tmin.columns if col != 'Date']
 
-# Fusion sur les dates communes (intersection)
-df_all = df_debit.merge(df_precip, on='Date') \
-                 .merge(df_tmin_renamed, on='Date') \
-                 .merge(df_tmax_renamed, on='Date')
+    # Renommage des températures
+    df_tmin_renamed = df_tmin.rename(columns={col: f"{col}_tmin" for col in stations_t})
+    df_tmax_renamed = df_tmax.rename(columns={col: f"{col}_tmax" for col in stations_t})
 
-df_all = df_all.sort_values('Date').reset_index(drop=True)
+    # Fusion sur les dates communes
+    df_all = df_debit.merge(df_precip, on='Date') \
+                     .merge(df_tmin_renamed, on='Date') \
+                     .merge(df_tmax_renamed, on='Date')
 
-# ==============================================================================
-# 2. TRAITEMENT CLIMATIQUE & CALCULS DES VARIABLES
-# ==============================================================================
-# Pluie moyenne spatiale sur le bassin
-P_mean = df_all[stations_p].mean(axis=1)
+    df_all = df_all.sort_values('Date').reset_index(drop=True)
 
-# Températures moyennes
-tmin_cols = [f"{col}_tmin" for col in stations_t]
-tmax_cols = [f"{col}_tmax" for col in stations_t]
+    # ==============================================================================
+    # 2. TRAITEMENT CLIMATIQUE & CALCULS DES VARIABLES (AVEC CSDI, CDD, Rx1day)
+    # ==============================================================================
+    P_mean = df_all[stations_p].mean(axis=1)
 
-Tmin_mean = df_all[tmin_cols].mean(axis=1)
-Tmax_mean = df_all[tmax_cols].mean(axis=1)
-Tmean     = (Tmin_mean + Tmax_mean) / 2.0
+    tmin_cols = [f"{col}_tmin" for col in stations_t]
+    tmax_cols = [f"{col}_tmax" for col in stations_t]
 
-# Estimation de l'ETP journalière (Hargreaves)
-Ra  = 15.0  # Radiation extraterrestre moyenne
-ETP = 0.0023 * Ra * (Tmean + 17.8) * np.sqrt(np.maximum(0, Tmax_mean - Tmin_mean))
+    Tmin_mean = df_all[tmin_cols].mean(axis=1)
+    Tmax_mean = df_all[tmax_cols].mean(axis=1)
+    Tmean     = (Tmin_mean + Tmax_mean) / 2.0
 
-# ==============================================================================
-# 3. CREATION DE LA MATRICE DE PREDICTEURS (FEATURES)
-# ==============================================================================
-X = pd.DataFrame(index=df_all.index)
+    # Estimation ETP (Hargreaves)
+    Ra  = 15.0  
+    ETP = 0.0023 * Ra * (Tmean + 17.8) * np.sqrt(np.maximum(0, Tmax_mean - Tmin_mean))
 
-# Lags et cumuls de pluie
-X['P_t0']   = P_mean
-X['P_t1']   = P_mean.shift(1)
-X['P_t2']   = P_mean.shift(2)
-X['P_t3']   = P_mean.shift(3)
-X['P_cum3'] = P_mean.rolling(window=3).sum()
-X['P_cum7'] = P_mean.rolling(window=7).sum()
+    # Calcul des nouveaux indices climatiques demandés
+    rx1day_series, cdd_series, csdi_series = calculer_indices_climatiques(P_mean)
 
-# Températures et ETP
-X['Tmean']  = Tmean
-X['ETP_t0'] = ETP
-X['ETP_t1'] = ETP.shift(1)
+    # ==============================================================================
+    # 3. CREATION DE LA MATRICE DE PREDICTEURS (FEATURES OPTIMISÉES POUR BONOU)
+    # ==============================================================================
+    X = pd.DataFrame(index=df_all.index)
 
-# Pluies individuelles par station
-for station in stations_p:
-    X[f"P_{station}"] = df_all[station]
+    # A. SAISONNALITÉ
+    X['Mois']      = df_all['Date'].dt.month
+    X['Jour_Annee'] = df_all['Date'].dt.dayofyear
 
-y = df_all['Q']
-dates = df_all['Date']
+    # B. LAGS ET CUMULS DE PLUIE A COURT ET LONG TERME
+    X['P_t0']  = P_mean
+    X['P_t1']  = P_mean.shift(1)
+    X['P_t2']  = P_mean.shift(2)
+    X['P_t3']  = P_mean.shift(3)
+    X['P_t5']  = P_mean.shift(5)
+    X['P_t10'] = P_mean.shift(10)
+    X['P_t15'] = P_mean.shift(15)
 
-# Suppression des NaNs générés par les retardements (shifts)
-valid_mask  = ~X.isna().any(axis=1) & ~y.isna()
-X_clean     = X[valid_mask].reset_index(drop=True)
-y_clean     = y[valid_mask].reset_index(drop=True)
-dates_clean = dates[valid_mask].reset_index(drop=True)
+    X['P_cum3']  = P_mean.rolling(window=3).sum()
+    X['P_cum7']  = P_mean.rolling(window=7).sum()
+    X['P_cum15'] = P_mean.rolling(window=15).sum() 
+    X['P_cum30'] = P_mean.rolling(window=30).sum() 
+    X['P_cum60'] = P_mean.rolling(window=60).sum() 
 
-# ==============================================================================
-# 4. DIVISION TRAIN / TEST (Chronologique 75% / 25%)
-# ==============================================================================
-split_idx = int(len(X_clean) * 0.75)
+    # C. NOUVEAUX INDICES CLIMATIQUES INTÉGRÉS
+    X['Rx1day'] = rx1day_series
+    X['CDD']    = cdd_series
+    X['CSDI']   = csdi_series
 
-X_train, X_test = X_clean.iloc[:split_idx], X_clean.iloc[split_idx:]
-y_train, y_test = y_clean.iloc[:split_idx], y_clean.iloc[split_idx:]
-dates_test      = dates_clean.iloc[split_idx:]
+    # D. TEMPÉRATURES ET ETP
+    X['Tmean']  = Tmean
+    X['ETP_t0'] = ETP
+    X['ETP_t1'] = ETP.shift(1)
 
-# ==============================================================================
-# 5. ENTRAINEMENT DE LA RANDOM FOREST
-# ==============================================================================
-rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=5, random_state=42, n_jobs=-1)
-rf.fit(X_train, y_train)
+    # E. PLUIES INDIVIDUELLES PAR STATION
+    for station in stations_p:
+        X[f"P_{station}"] = df_all[station]
 
-# Prédiction
-y_pred = rf.predict(X_test)
+    y = df_all['Q']
+    dates = df_all['Date']
 
-# ==============================================================================
-# 6. EVALUATION DES PERFORMANCES
-# ==============================================================================
-# Nash-Sutcliffe Efficiency (NSE)
-nse = 1 - (np.sum((y_test - y_pred)**2) / np.sum((y_test - np.mean(y_test))**2))
-r2   = r2_score(y_test, y_pred)
-rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    # Nettoyage des NaNs générés par les retardements
+    valid_mask  = ~X.isna().any(axis=1) & ~y.isna()
+    X_clean     = X[valid_mask].reset_index(drop=True)
+    y_clean     = y[valid_mask].reset_index(drop=True)
+    dates_clean = dates[valid_mask].reset_index(drop=True)
 
-print(f"--- RÉSULTATS DE VALIDATION (TEST) ---")
-print(f"NSE  : {nse:.3f}")
-print(f"R²   : {r2:.3f}")
-print(f"RMSE : {rmse:.3f} m³/s\n")
+    # ==============================================================================
+    # 4. DIVISION TRAIN / TEST (Chronologique 75% / 25%)
+    # ==============================================================================
+    split_idx = int(len(X_clean) * 0.75)
 
-# ==============================================================================
-# 7. VISUALISATION DES RESULTATS
-# ==============================================================================
-# Hydrogramme
-plt.figure(figsize=(12, 5))
-plt.plot(dates_test, y_test, label='Débit Observé', color='black', alpha=0.8)
-plt.plot(dates_test, y_pred, label='Débit Prédit (RF)', color='red', linestyle='--', alpha=0.8)
-plt.title(f"Hydrogramme de Validation - NSE: {nse:.2f} | R²: {r2:.2f}")
-plt.xlabel('Date')
-plt.ylabel('Débit (m³/s)')
-plt.legend()
-plt.grid(True, linestyle=':', alpha=0.6)
-plt.tight_layout()
-plt.show()
+    X_train, X_test = X_clean.iloc[:split_idx], X_clean.iloc[split_idx:]
+    y_train, y_test = y_clean.iloc[:split_idx], y_clean.iloc[split_idx:]
+    dates_test      = dates_clean.iloc[split_idx:]
 
-# Importance des variables (Top 15)
-importances = rf.feature_importances_
-indices = np.argsort(importances)[::-1][:15]
+    # ==============================================================================
+    # 5. ENTRAINEMENT DE LA RANDOM FOREST OPTIMISÉE
+    # ==============================================================================
+    print("🌲 Entraînement de la Random Forest en cours...")
+    rf = RandomForestRegressor(
+        n_estimators=300, 
+        max_depth=18,
+        min_samples_leaf=3,
+        max_features='sqrt',
+        random_state=42, 
+        n_jobs=-1
+    )
+    rf.fit(X_train, y_train)
 
-plt.figure(figsize=(10, 5))
-plt.bar(range(len(indices)), importances[indices], color='steelblue', align='center')
-plt.xticks(range(len(indices)), [X_clean.columns[i] for i in indices], rotation=45, ha='right')
-plt.ylabel('Score d\'Importance (Feature Importance)')
-plt.title('Top 15 des Variables Explicatives les Plus Importantes')
-plt.grid(True, axis='y', linestyle=':', alpha=0.6)
-plt.tight_layout()
-plt.show()
+    # SAUVEGARDE AUTOMATIQUE DU MODÈLE
+    modele_path = BASE_DIR / 'modele_debit_rf.pkl'
+    joblib.dump(rf, modele_path)
+    print(f"✅ Fichier modèle généré avec succès : {modele_path}")
+
+    # Prédiction sur le jeu de test
+    y_pred = rf.predict(X_test)
+
+    # ==============================================================================
+    # 6. ENREGISTREMENT AUTOMATIQUE DES PREDICTIONS DANS UN FICHIER EXCEL
+    # ==============================================================================
+    print("💾 Enregistrement des prédictions dans le fichier Excel...")
+    df_historique = pd.DataFrame({
+        'Date': dates_test.values,
+        'Debit_Observe': y_test.values,
+        'Debit_Predi': y_pred,
+        'CSDI': X_test['CSDI'].values,
+        'CDD': X_test['CDD'].values,
+        'Rx1day': X_test['Rx1day'].values
+    })
+    
+    excel_path = BASE_DIR / 'historique_predictions.xlsx'
+    df_historique.to_excel(excel_path, index=False)
+    print(f"✅ Fichier Excel des prédictions mis à jour : {excel_path}")
+
+    # ==============================================================================
+    # 7. EVALUATION DES PERFORMANCES
+    # ==============================================================================
+    nse  = 1 - (np.sum((y_test - y_pred)**2) / np.sum((y_test - np.mean(y_test))**2))
+    r2   = r2_score(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+
+    print(f"\n--- RÉSULTATS DE VALIDATION SUR BONOU ---")
+    print(f"NSE  : {nse:.3f}")
+    print(f"R²   : {r2:.3f}")
+    print(f"RMSE : {rmse:.3f} m³/s\n")
+
+    # ==============================================================================
+    # 8. VISUALISATION ET SAUVEGARDE SANS BLOCAGE
+    # ==============================================================================
+    print("📊 Sauvegarde des graphiques...")
+
+    # 1. Hydrogramme
+    plt.figure(figsize=(12, 5))
+    plt.plot(dates_test, y_test, label='Débit Observé', color='black', alpha=0.8)
+    plt.plot(dates_test, y_pred, label=f'Débit Prédit (RF) - NSE: {nse:.2f}', color='red', linestyle='--', alpha=0.8)
+    plt.title(f"Hydrogramme de Validation à Bonou - NSE: {nse:.2f} | R²: {r2:.2f}")
+    plt.xlabel('Date')
+    plt.ylabel('Débit (m³/s)')
+    plt.legend()
+    plt.grid(True, linestyle=':', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig(BASE_DIR / 'hydrogramme.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # 2. Importance des variables (Top 15)
+    importances = rf.feature_importances_
+    indices = np.argsort(importances)[::-1][:15]
+
+    plt.figure(figsize=(10, 5))
+    plt.bar(range(len(indices)), importances[indices], color='steelblue', align='center')
+    plt.xticks(range(len(indices)), [X_clean.columns[i] for i in indices], rotation=45, ha='right')
+    plt.ylabel('Score d\'Importance (Feature Importance)')
+    plt.title('Top 15 des Variables Explicatives les Plus Importantes')
+    plt.grid(True, axis='y', linestyle=':', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig(BASE_DIR / 'importance_variables.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print("🎉 Traitement terminé à 100% ! Les images, le modèle .pkl et le fichier Excel d'historique sont enregistrés.")
+
+# Protection contre le multiprocessing infini sous Windows
+if __name__ == '__main__':
+    executer_script()
