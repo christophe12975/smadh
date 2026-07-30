@@ -109,3 +109,18 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+/* Assurez-vous que le corps et la racine prennent tout l'espace disponible */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Le conteneur principal de vos pages d'authentification ou d'accueil */
+.main-container, .app-container {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
