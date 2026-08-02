@@ -863,6 +863,14 @@ function screenDashboard() {
     </div>` : ""}
 
     <div class="section-label">Accès rapide</div>
+    <div class="menu-item" onclick="setState({screen:'import',prevScreen:'dashboard'})">
+      <div class="card"><div class="menu-row">
+        <div class="menu-info">
+          <div class="title">📂 Import &amp; Export des données</div>
+          <div class="desc">Charger et exporter les 4 fichiers Excel</div>
+        </div><div class="badge">NEW</div>
+      </div></div>
+    </div>
     <div class="menu-item" onclick="setState({screen:'prediction',prevScreen:'dashboard'})">
       <div class="card"><div class="menu-row">
         <div class="menu-info">
@@ -1340,14 +1348,822 @@ function screenStations() {
 }
 
 function screenImport() {
+  var n = Object.values(window._importState.data).filter(Boolean).length;
+  var ak = window._importState.activeTab;
+
+  function tabStyle(key) {
+    var active = ak === key;
+    return "flex:1;min-width:60px;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:" +
+      (active ? "1px solid #4ecba0" : "1px solid #234055") + ";background:" +
+      (active ? "rgba(78,203,160,.14)" : "#0d2235") + ";color:" +
+      (active ? "#4ecba0" : "#6a9080") + ";";
+  }
+
+  function btnExportStyle(key) {
+    var ok = !!window._importState.data[key];
+    return "width:100%;padding:10px;margin-bottom:8px;background:" +
+      (ok ? "rgba(78,203,160,.1)" : "#0d2235") + ";color:" +
+      (ok ? "#4ecba0" : "#4a6a5a") + ";border:" +
+      (ok ? "1px solid rgba(78,203,160,.3)" : "1px solid #234055") +
+      ";border-radius:8px;font-size:12px;font-weight:600;cursor:" +
+      (ok ? "pointer" : "not-allowed") + ";";
+  }
+
+  var tabsHtml = [
+    {key:"precip", icon:"🌧", label:"PRECIP"},
+    {key:"tmin",   icon:"❄️", label:"TMIN"},
+    {key:"tmax",   icon:"🌡️", label:"TMAX"},
+    {key:"debit",  icon:"💧", label:"DEBIT"},
+  ].map(function(t) {
+    return '<div onclick="importSetTab(\"' + t.key + '\")" id="import-tab-' + t.key +
+           '" style="' + tabStyle(t.key) + '">' + t.icon + ' ' + t.label + '</div>';
+  }).join("");
+
+  var exportsHtml = [
+    {key:"precip", icon:"🌧", label:"Precipitations"},
+    {key:"tmin",   icon:"❄️", label:"Tmin"},
+    {key:"tmax",   icon:"🌡️", label:"Tmax"},
+    {key:"debit",  icon:"💧", label:"Debits"},
+  ].map(function(f) {
+    var ok = !!window._importState.data[f.key];
+    return '<button id="btn-export-' + f.key + '" ' + (ok ? "" : "disabled") +
+           ' onclick="importExportFile(\"' + f.key + '\")" style="' + btnExportStyle(f.key) + '">' +
+           f.icon + " Exporter " + f.label + "</button>";
+  }).join("");
+
+  var html = header("Gestion des donnees", "Upload - Validation - Export Excel", true);
+  html += '<div class="content">';
+  html += '<div class="card">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+  html += '<div class="card-title" style="margin:0;">Progression</div>';
+  html += '<span style="font-size:13px;color:#4ecba0;font-weight:700;" id="import-progress">' + n + " / 4</span>";
+  html += "</div>";
+  html += '<div style="height:6px;background:#0d2235;border-radius:4px;overflow:hidden;margin-top:8px;">';
+  html += '<div id="import-progress-bar" style="height:100%;width:' + (n * 25) + '%;background:linear-gradient(90deg,#0f6e56,#4ecba0);border-radius:4px;transition:width .4s;"></div>';
+  html += "</div>";
+  html += '<div style="font-size:10px;color:#6a9080;margin-top:6px;" id="import-progress-text">';
+  html += (n === 4 ? "Tous les fichiers charges - export disponible" : "Chargez les 4 fichiers pour activer l export global");
+  html += "</div></div>";
+  html += '<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="import-tabs">' + tabsHtml + "</div>";
+  html += '<div id="import-panel"></div>';
+  html += '<div class="card">';
+  html += '<div class="card-title">Export global</div>';
+  html += '<div style="font-size:11px;color:#6a9080;margin-bottom:10px;">Telechargez les 4 fichiers Excel standardises</div>';
+  html += exportsHtml;
+  html += '<button id="btn-export-all" onclick="importExportAll()" style="width:100%;padding:12px;background:' +
+    (n >= 1 ? "linear-gradient(135deg,#0f6e56,#0a9e7a)" : "#234055") + ";color:" +
+    (n >= 1 ? "#fff" : "#4a6a5a") + ";border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:" +
+    (n >= 1 ? "pointer" : "not-allowed") + ';">📦 Exporter les ' + n + " fichier(s) charge(s)</button>";
+  html += "</div></div>";
+  html += drawerMenu();
+  return html;
+}
+
+function screenOS1Cartes() {
+  const sousTabs = [
+    { id:"precip", label:"Précipitations" },
+    { id:"temp",   label:"Températures" },
+    { id:"correl", label:"Corrélations" },
+  ];
+
+  const contenu = {
+    precip: `
+      <div class="card">
+        <div class="card-title">Spatialisation ETCCDI — Précipitations</div>
+        <div class="card-sub">PRCPTOT, Rx1day, Rx5day, R10mm, R20mm, SDII, CDD, CWD · IDW</div>
+        <img src="${IMG_BASE}/spatialisation_ETCCDI_Bonou_finale.png" alt="Spatialisation indices précipitations" style="width:100%;border-radius:10px;margin-top:6px;"/>
+      </div>`,
+    temp: `
+      <div class="card">
+        <div class="card-title">Spatialisation ETCCDI — Températures</div>
+        <div class="card-sub">SU25, TR20, TN10p, TX10p, TN90p, TX90p, WSDI, CSDI · IDW</div>
+        <img src="${IMG_BASE}/spatialisation_temperature_Bonou_IDW.png" alt="Spatialisation indices températures" style="width:100%;border-radius:10px;margin-top:6px;"/>
+      </div>`,
+    correl: `
+      <div class="card">
+        <div class="card-title">Heatmap Spearman — vue d'ensemble</div>
+        <div class="card-sub">16 indices × 3 débits (Q₅, Q₅₀, Q₉₅)</div>
+        <img src="${IMG_BASE}/Heatmap_Spearman.png" alt="Heatmap Spearman" style="width:100%;border-radius:10px;margin-top:6px;"/>
+      </div>
+      <div class="card">
+        <div class="card-title">Corrélogramme — Précipitations significatives</div>
+        <img src="${IMG_BASE}/Correlogramme_Spearman_pluies_singif.png" alt="Corrélogramme pluies" style="width:100%;border-radius:10px;margin-top:6px;"/>
+      </div>
+      <div class="card">
+        <div class="card-title">Corrélogramme — Température (TR / CSDI)</div>
+        <div class="card-sub">Antiphase marquée : ρ = −0.75</div>
+        <img src="${IMG_BASE}/Correlogramme_Spearman_Temperature_signif.png" alt="Corrélogramme température" style="width:100%;border-radius:10px;margin-top:6px;"/>
+      </div>`
+  };
+
   return `
-  ${header("Import des données","Charger un nouveau jeu de données", true)}
+    <div class="tabs" style="margin-bottom:8px;">
+      ${sousTabs.map(t=>`
+      <div class="tab ${state.os1CarteTab===t.id?'active':''}" onclick="setState({os1CarteTab:'${t.id}'})">${t.label}</div>`).join("")}
+    </div>
+    ${contenu[state.os1CarteTab] || contenu.precip}
+  `;
+}
+
+// ------------------------------------------------------------
+// OS2 & OS3
+// ------------------------------------------------------------
+function screenOS2() {
+  const isDecideur = state.user?.role === 'décideur';
+
+  const variables = [
+    { id:"hydro",  label:"Hydrologie",    fichier:"Scalogramme_Hydrologie.png",
+      interp: isDecideur 
+        ? "Le débit de la rivière suit un cycle majeur de 4 ans. Les périodes les plus humides et critiques ont été observées entre 2008 et 2015."
+        : "Le scalogramme des débits révèle une structure cohérente à l'échelle de 4 ans, particulièrement marquée entre 2008 et 2015 — oscillation quadriennale liée aux cycles ENSO." },
+    { id:"precip", label:"Précipitations", fichier:"Scalogramme_Precipitation.png",
+      interp: isDecideur
+        ? "Les fortes pluies présentent un cycle récurrent de 4 à 5 ans, notamment entre 2000 et 2008, correspondant aux grandes crues historiques."
+        : "Le signal pluviométrique présente sa structure la plus significative à l'échelle 4–5 ans entre 2000 et 2008, coïncidant avec les crues majeures." },
+    { id:"temp",   label:"Température",   fichier:"Scalogramme_Temperature.png",
+      interp: isDecideur
+        ? "Les températures varient sur des cycles plus courts (2 à 3 ans) sans régularité stricte."
+        : "Le scalogramme thermique montre une variabilité plus localisée à l'échelle 2–3 ans, sans mode dominant global stable." },
+  ];
+  const v = variables.find(x=>x.id===state.os2VarTab) || variables[0];
+  return `
+  ${header(isDecideur ? "Cycles & Tendances" : "Variabilité temporelle", isDecideur ? "Évolution pluriannuelle des extrêmes" : "Transformée en ondelettes continues (CWT)", true)}
   <div class="content">
-    <div class="card" style="border:2px dashed #234055;background:#0d1b2a;text-align:center;padding:32px 16px;">
-      <div style="font-size:36px;margin-bottom:8px;">📂</div>
-      <div style="font-size:13px;color:#4ecba0;font-weight:600;">Glisser un fichier Excel (.xlsx)</div>
+    <div class="tabs">
+      ${variables.map(item=>`
+      <div class="tab ${state.os2VarTab===item.id?'active':''}" onclick="setState({os2VarTab:'${item.id}'})">${item.label}</div>`).join("")}
+    </div>
+    <div class="card">
+      <div class="card-title">${isDecideur ? "Graphique de tendance : " + v.label : "Scalogramme CWT — " + v.label}</div>
+      <img src="${IMG_BASE}/${v.fichier}" alt="Scalogramme ${v.label}" loading="lazy"
+           style="width:100%;border-radius:10px;margin-top:4px;background:#0d2235;min-height:160px;"/>
+    </div>
+    <div class="card">
+      <div class="card-title">${isDecideur ? "Ce qu'il faut retenir" : "Interprétation"}</div>
+      <div class="interp-box ${isDecideur?'decideur-box':''}">${v.interp}</div>
+    </div>
+  </div>
+  ${drawerMenu()}`;
+}
+
+function screenOS3() {
+  const isDecideur = state.user?.role === 'décideur';
+
+  if(isDecideur) {
+    return `
+    ${header("Guide de Décision","Comprendre et anticiper les impacts", true)}
+    <div class="content">
+      <div class="card">
+        <div class="card-title"> Synthèse d'Anticipation</div>
+        <div class="interp-box decideur-box">
+          <strong>Stratégie de Prévention :</strong>
+          <ul style="margin-left:16px;margin-top:6px;line-height:1.6;">
+            <li>En cas de pluies intenses répétées sur 5 jours (Rx5day), déclencher le niveau de pré-alerte crue à Bonou.</li>
+            <li>En période de sécheresse prolongée (CDD > 70j), restreindre préventivement les prélèvements d'eau pour protéger les débits d'étiage.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tableau Récapitulatif de Cause à Effet</div>
+        <div style="font-size:12px;line-height:1.8;color:#8ab5a5;">
+          <div style="padding:8px;background:#0d2235;border-radius:6px;margin-bottom:6px;">
+            <strong style="color:#4ecba0;">Pluies de 5 jours ➔ Crue à Bonou</strong><br>
+            Réponse rapide du bassin. Recommandation : Suivi pluviométrique strict.
+          </div>
+          <div style="padding:8px;background:#0d2235;border-radius:6px;">
+            <strong style="color:#e0a060;">Sécheresses longues ➔ Baisse des réserves</strong><br>
+            Impact direct sur les débits bas. Recommandation : Plan de soutien d'étiage.
+          </div>
+        </div>
+      </div>
+    </div>
+    ${drawerMenu()}`;
+  }
+
+  // Vue Scientifique
+  return `
+  ${header("Relations de phase","Ondelettes croisées · Cohérence · 9 paires", true)}
+  <div class="content">
+    <div class="tabs">
+      <div class="tab ${state.os3Tab==='xwt'?'active':''}" onclick="setState({os3Tab:'xwt'})">Phases XWT</div>
+      <div class="tab ${state.os3Tab==='wtc'?'active':''}" onclick="setState({os3Tab:'wtc'})">Cohérence WTC</div>
+      <div class="tab ${state.os3Tab==='synth'?'active':''}" onclick="setState({os3Tab:'synth'})">Synthèse</div>
+    </div>
+
+    ${state.os3Tab==='xwt' ? `
+    <div class="card">
+      <div class="card-title">Ondelettes croisées (XWT)</div>
+      <div class="card-sub">Puissance de phase commune entre indice et débit</div>
+      <img src="${IMG_BASE}/transformee_ondelettes_croisees.png" alt="Transformée en ondelettes croisées" loading="lazy"
+           style="width:100%;border-radius:10px;margin-top:4px;background:#0d2235;min-height:160px;"/>
+    </div>
+    <div class="card">
+      <div class="card-title">Relations de phase — 9 paires</div>
+      <div class="card-sub">→ en phase · ← antiphase · ↓ 1er précède · ↘ retard</div>
+      ${INDICES_SIGNIFICATIFS.map(d=>`
+      <div class="phase-card">
+        <div class="phase-arrow">${d.phase}</div>
+        <div class="phase-info">
+          <div class="pair">${d.indice} — ${d.debit} · ρ=${d.rho>0?"+":""}${d.rho.toFixed(3)}</div>
+          <div class="interp">${d.interp}</div>
+        </div>
+      </div>`).join("")}
+    </div>` : ""}
+
+    ${state.os3Tab==='wtc' ? `
+    <div class="card">
+      <div class="card-title">Cohérence en ondelettes (WTC)</div>
+      <div class="card-sub">Zones de forte cohérence phase-amplitude</div>
+      <img src="${IMG_BASE}/coherence_ondelettes.png" alt="Cohérence en ondelettes" loading="lazy"
+           style="width:100%;border-radius:10px;margin-top:4px;background:#0d2235;min-height:160px;"/>
+    </div>` : ""}
+
+    ${state.os3Tab==='synth' ? `
+    <div class="card">
+      <div class="card-title">Synthèse OS3</div>
+      <div class="section-label">Crues extrêmes (Q₉₅)</div>
+      <div class="interp-box">Relations en phase avec Rx5day, Rx1day, PRCPTOT. Réponse quasi-synchrone aux pluies intenses. Période dominante : 4 ans · 1998–2010.</div>
+    </div>` : ""}
+  </div>
+  ${drawerMenu()}`;
+}
+
+function screenAlertes() {
+  return `
+  ${header("Alertes hydroclimatiques","Surveillance des seuils ETCCDI", true)}
+  <div class="content">
+    <div class="alert-item">
+      <div class="alert-title">⚠ Rx5day — Seuil dépassé (Risque Crue)</div>
+      <div class="alert-detail">Valeur : 142 mm · Seuil : 130 mm · Risque élevé sur Q₉₅ à Bonou</div>
+    </div>
+    <div class="alert-item">
+      <div class="alert-title">⚠ CDD — Seuil dépassé (Risque Étiage)</div>
+      <div class="alert-detail">Séquence sèche : 78j · Seuil : 70j · Impact sur le débit médian Q₅₀</div>
+    </div>
+    <div class="normal-item">
+      <div class="normal-title">✓ TR — Normal</div>
+      <div style="font-size:11px;color:#3a8a6a;margin-top:4px;">Nuits tropicales : 42 · Seuil : 50</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Statistiques des Débits à Bonou</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-top:4px;">
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Moyenne</div>
+          <div style="font-weight:700;color:#4ecba0;font-size:16px;">${STATS_DEBIT.moyenne} m³/s</div>
+        </div>
+        <div style="background:#0d2235;padding:10px;border-radius:8px;">
+          <div style="color:#6a9080;font-size:10px;">Maximum</div>
+          <div style="font-weight:700;color:#e06060;font-size:16px;">${STATS_DEBIT.max} m³/s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  ${drawerMenu()}`;
+}
+
+function screenProfil() {
+  const u = state.user || {};
+  const isDecideur = u.role === 'décideur';
+  const avatarContent = u.avatar_url ? `<img src="${u.avatar_url}" alt="Avatar"/>` : `👤`;
+
+  return `
+  ${header("Mon profil","Informations du compte")}
+  <div class="content">
+    <div class="card" style="text-align:center;padding:24px 16px;">
+      <div class="avatar-wrap">
+        <div class="profile-avatar">${state.avatarUploading ? `…` : avatarContent}</div>
+        <div class="avatar-edit-btn" onclick="document.getElementById('avatar-input').click()">✏️</div>
+        <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp" style="display:none;" onchange="handleAvatarChange(event)"/>
+      </div>
+      <div class="profile-name">${u.nom || "Utilisateur"}</div>
+      <div class="profile-role ${isDecideur?'decideur':''}">${u.role || "scientifique"}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Informations Compte</div>
+      <div style="font-size:12px;color:#8ab5a5;line-height:2;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Institution</span>
+          <span style="color:#e8f4f0;">${u.institution || "Non spécifiée"}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Type d'accès</span>
+          <span style="color:${isDecideur?'#e0a060':'#4ecba0'};text-transform:capitalize;">${u.role}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Bassin suivi</span>
+          <span style="color:#e8f4f0;">Ouémé à Bonou</span>
+        </div>
+      </div>
+    </div>
+   <button class="btn-danger" onclick="doLogout()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;vertical-align:-0.15em;margin-right:0.4em;">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <path d="M16 17l5-5-5-5"/>
+    <path d="M21 12H9"/>
+  </svg>
+  Se déconnecter
+</button>
+  </div>
+  ${drawerMenu()}`;
+}
+
+function screenStations() {
+  return `
+  ${header("Gestion des stations","25 pluviométriques · 4 synoptiques", true)}
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Stations pluviométriques (25)</div>
+      <div class="stations-grid">
+        ${STATIONS.map(s=>`
+        <div class="station-item ${s===state.selectedStation?'selected':''}"
+             onclick="setState({selectedStation:'${s}'})">${s}</div>`).join("")}
+      </div>
     </div>
   </div>`;
+}
+
+function screenImport() {
+  return `
+  ${header("Gestion des donnees","Upload · Validation · Export Excel", true)}
+  <div class="content">
+
+    <!-- PROGRESSION -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="card-title" style="margin:0;">Progression</div>
+        <span style="font-size:13px;color:#4ecba0;font-weight:700;" id="import-progress">0 / 4</span>
+      </div>
+      <div style="height:6px;background:#0d2235;border-radius:4px;overflow:hidden;margin-top:8px;">
+        <div id="import-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#0f6e56,#4ecba0);border-radius:4px;transition:width .4s;"></div>
+      </div>
+      <div style="font-size:10px;color:#6a9080;margin-top:6px;" id="import-progress-text">
+        Chargez les 4 fichiers pour activer l export global
+      </div>
+    </div>
+
+    <!-- ONGLETS -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="import-tabs">
+      ${[
+        {key:'precip', icon:'🌧', label:'PRECIP'},
+        {key:'tmin',   icon:'❄️', label:'TMIN'},
+        {key:'tmax',   icon:'🌡️', label:'TMAX'},
+        {key:'debit',  icon:'💧', label:'DEBIT'},
+      ].map(t=>`
+      <div onclick="importSetTab('${t.key}')" id="import-tab-${t.key}"
+           style="flex:1;min-width:60px;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:1px solid #234055;background:#0d2235;color:#6a9080;">
+        ${t.icon} ${t.label}
+      </div>`).join("")}
+    </div>
+
+    <!-- PANNEAU ACTIF -->
+    <div id="import-panel"></div>
+
+    <!-- EXPORT GLOBAL -->
+    <div class="card">
+      <div class="card-title">Export global</div>
+      <div style="font-size:11px;color:#6a9080;margin-bottom:10px;">Telechargez les 4 fichiers Excel standardises</div>
+      ${[
+        {key:'precip', icon:'🌧', label:'Precipitations'},
+        {key:'tmin',   icon:'❄️', label:'Tmin'},
+        {key:'tmax',   icon:'🌡️', label:'Tmax'},
+        {key:'debit',  icon:'💧', label:'Debits'},
+      ].map(f=>`
+      <button id="btn-export-${f.key}" disabled onclick="importExportFile('${f.key}')"
+              style="width:100%;padding:10px;margin-bottom:8px;background:#0d2235;color:#4a6a5a;border:1px solid #234055;border-radius:8px;font-size:12px;font-weight:600;cursor:not-allowed;">
+        ${f.icon} Exporter ${f.label}
+      </button>`).join("")}
+      <button id="btn-export-all" onclick="importExportAll()"
+              style="width:100%;padding:12px;background:#234055;color:#4a6a5a;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:not-allowed;">
+        📦 Exporter tous les fichiers
+      </button>
+    </div>
+  </div>
+  ${drawerMenu()}
+  <script>
+  // ---- ETAT IMPORT ----
+  if(!window._importState) {
+    window._importState = {
+      activeTab: 'precip',
+      data: { precip:null, tmin:null, tmax:null, debit:null },
+      files: { precip:null, tmin:null, tmax:null, debit:null },
+    };
+  }
+
+  const FILE_CFG = {
+    precip:{ label:'Precipitations journalieres', unit:'mm', exportName:'Precipitations_25stations_1991_2020.xlsx', sheetName:'Precipitations', expectedCols:26 },
+    tmin:  { label:'Temperatures minimales Tmin', unit:'C',  exportName:'Tmin_4stations_1991_2020.xlsx', sheetName:'Tmin', expectedCols:5 },
+    tmax:  { label:'Temperatures maximales Tmax', unit:'C',  exportName:'Tmax_4stations_1991_2020.xlsx', sheetName:'Tmax', expectedCols:5 },
+    debit: { label:'Debits journaliers Bonou',    unit:'m3s',exportName:'Debits_Bonou_1991_2020.xlsx',   sheetName:'Debits', expectedCols:2 },
+  };
+
+  function importParseNum(val) {
+    if(val===null||val===undefined||val==='') return null;
+    const n = parseFloat(String(val).replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+
+  function importComputeStats(data, cols) {
+    const res = {};
+    cols.forEach(col => {
+      const vals = data.map(r=>importParseNum(r[col])).filter(v=>v!==null);
+      if(!vals.length) return;
+      const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+      res[col] = { mean:+mean.toFixed(3), std:+std.toFixed(3), min:+Math.min(...vals).toFixed(3), max:+Math.max(...vals).toFixed(3), n:vals.length, missing:data.length-vals.length };
+    });
+    return res;
+  }
+
+  function importUpdateProgress() {
+    const n = Object.values(window._importState.data).filter(Boolean).length;
+    const el = document.getElementById('import-progress');
+    const bar = document.getElementById('import-progress-bar');
+    const txt = document.getElementById('import-progress-text');
+    if(el) el.textContent = n + ' / 4';
+    if(bar) bar.style.width = (n*25) + '%';
+    if(txt) txt.textContent = n===4 ? 'Tous les fichiers charges - export disponible' : 'Chargez les 4 fichiers pour activer l export global';
+    // Mettre a jour les boutons export
+    Object.keys(FILE_CFG).forEach(key => {
+      const btn = document.getElementById('btn-export-'+key);
+      if(btn) {
+        const ok = !!window._importState.data[key];
+        btn.disabled = !ok;
+        btn.style.background = ok ? 'rgba(78,203,160,.1)' : '#0d2235';
+        btn.style.color = ok ? '#4ecba0' : '#4a6a5a';
+        btn.style.border = ok ? '1px solid rgba(78,203,160,.3)' : '1px solid #234055';
+        btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+      }
+    });
+    const btnAll = document.getElementById('btn-export-all');
+    if(btnAll) {
+      btnAll.disabled = n < 1;
+      btnAll.style.background = n >= 1 ? 'linear-gradient(135deg,#0f6e56,#0a9e7a)' : '#234055';
+      btnAll.style.color = n >= 1 ? '#fff' : '#4a6a5a';
+      btnAll.style.cursor = n >= 1 ? 'pointer' : 'not-allowed';
+    }
+  }
+
+  function importSetTab(key) {
+    window._importState.activeTab = key;
+    // Mettre a jour les onglets visuellement
+    Object.keys(FILE_CFG).forEach(k => {
+      const t = document.getElementById('import-tab-'+k);
+      if(t) {
+        const isActive = k === key;
+        t.style.border = isActive ? '1px solid #4ecba0' : '1px solid #234055';
+        t.style.background = isActive ? 'rgba(78,203,160,.14)' : '#0d2235';
+        t.style.color = isActive ? '#4ecba0' : '#6a9080';
+      }
+    });
+    importRenderPanel();
+  }
+
+  function importRenderPanel() {
+    const key = window._importState.activeTab;
+    const cfg = FILE_CFG[key];
+    const d = window._importState.data[key];
+    const fname = window._importState.files[key];
+    const panel = document.getElementById('import-panel');
+    if(!panel) return;
+
+    const zoneStyle = d
+      ? 'border:2px solid #4ecba0;background:rgba(78,203,160,.06);'
+      : 'border:2px dashed #234055;background:#0d1b2a;';
+
+    let statsHtml = '';
+    let previewHtml = '';
+    let exportBtnHtml = '';
+
+    if(d) {
+      const cols = Object.keys(d[0]);
+      const valueCols = cols.filter(c=>!c.toLowerCase().includes('date'));
+      const stats = importComputeStats(d, valueCols);
+
+      // Apercu
+      const previewCols = cols.slice(0,4);
+      previewHtml = '<div style="font-size:10px;color:#5a7a6a;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;">Apercu (5 lignes)</div>';
+      previewHtml += '<div style="overflow-x:auto;border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+      previewHtml += '<thead><tr>' + previewCols.map(c=>'<th style="color:#6a9080;padding:4px 6px;text-align:left;border-bottom:1px solid #234055;white-space:nowrap;">'+c+'</th>').join('');
+      if(cols.length>4) previewHtml += '<th style="color:#6a9080;padding:4px 6px;">+' + (cols.length-4) + '...</th>';
+      previewHtml += '</tr></thead><tbody>';
+      d.slice(0,5).forEach(row => {
+        previewHtml += '<tr>' + previewCols.map(c=>'<td style="padding:4px 6px;border-bottom:1px solid #1a2f42;color:#c0d8d0;white-space:nowrap;">'+(row[c]??'-')+'</td>').join('');
+        if(cols.length>4) previewHtml += '<td style="padding:4px 6px;color:#4a6a5a;">...</td>';
+        previewHtml += '</tr>';
+      });
+      previewHtml += '</tbody></table></div>';
+
+      // Stats
+      statsHtml = '<div style="font-size:10px;color:#5a7a6a;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;">Statistiques (' + cfg.unit + ')</div>';
+      statsHtml += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+      statsHtml += '<thead><tr>' + ['Station','Moy.','Ec.','Min','Max','N'].map(h=>'<th style="color:#6a9080;padding:4px 6px;text-align:left;border-bottom:1px solid #234055;">'+h+'</th>').join('') + '</tr></thead><tbody>';
+      Object.entries(stats).forEach(([col,s]) => {
+        statsHtml += '<tr><td style="padding:4px 6px;color:#4ecba0;font-weight:600;border-bottom:1px solid #1a2f42;">'+col+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.mean+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.std+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.min+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.max+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.n+'</td></tr>';
+      });
+      statsHtml += '</tbody></table></div>';
+
+      exportBtnHtml = '<button onclick="importExportFile(\'' + key + '\')" style="width:100%;padding:10px;margin-top:12px;background:rgba(78,203,160,.1);color:#4ecba0;border:1px solid rgba(78,203,160,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📥 Exporter ' + cfg.label + '</button>';
+    }
+
+    panel.innerHTML = '<div class="card">' +
+      '<div class="card-title">' + cfg.label + '</div>' +
+      '<div style="font-size:11px;color:#6a9080;margin-bottom:10px;">' + cfg.unit + ' · Journalier</div>' +
+      '<div style="' + zoneStyle + 'border-radius:10px;padding:20px;text-align:center;cursor:pointer;position:relative;margin-bottom:12px;">' +
+        '<input type="file" accept=".xlsx,.xls,.csv" onchange="importHandleFile(event,\'' + key + '\')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" />' +
+        '<div style="font-size:28px;margin-bottom:6px;">' + (d?'✅':'📂') + '</div>' +
+        '<div style="font-size:12px;font-weight:600;color:#8ab5a5;">' + (fname || 'Glisser ou cliquer pour uploader') + '</div>' +
+        '<div style="font-size:10px;color:#4a6a5a;margin-top:3px;">' + (d ? d.length.toLocaleString() + ' lignes - ' + Object.keys(d[0]).length + ' colonnes' : 'Formats: .xlsx .xls .csv') + '</div>' +
+        (d ? '<div style="font-size:11px;color:#4ecba0;font-weight:600;margin-top:6px;">Charge avec succes ✓</div>' : '') +
+      '</div>' +
+      previewHtml + statsHtml + exportBtnHtml +
+    '</div>';
+  }
+
+  function importHandleFile(event, key) {
+    const file = event.target.files[0];
+    if(!file) return;
+    window._importState.files[key] = file.name;
+    window._importState.data[key] = null;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        if(typeof XLSX === 'undefined') {
+          alert('La librairie XLSX nest pas chargee. Verifie ta connexion internet.');
+          return;
+        }
+        const wb = XLSX.read(evt.target.result, { type:'binary', cellDates:true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws, { raw:false, dateNF:'DD/MM/YYYY' });
+        if(!json || !json.length) { alert('Fichier vide ou format non reconnu.'); return; }
+        window._importState.data[key] = json;
+        importUpdateProgress();
+        importSetTab(key);
+      } catch(err) {
+        alert('Erreur de lecture : ' + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function importExportFile(key) {
+    const d = window._importState.data[key];
+    if(!d) { alert('Aucune donnee chargee pour ce fichier.'); return; }
+    if(typeof XLSX === 'undefined') { alert('XLSX non disponible.'); return; }
+
+    const cfg = FILE_CFG[key];
+    const standardized = d.map(row => {
+      const nr = {};
+      Object.entries(row).forEach(([k,v]) => {
+        const ck = k.trim();
+        if(ck.toLowerCase().includes('date')) { nr[ck] = v; }
+        else { const n = importParseNum(v); nr[ck] = n !== null ? n : v; }
+      });
+      return nr;
+    });
+
+    const cols = Object.keys(d[0]).filter(c=>!c.toLowerCase().includes('date'));
+    const stats = importComputeStats(d, cols);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standardized), cfg.sheetName);
+
+    const srows = [['Station','Moyenne','Ecart-type','Minimum','Maximum','N valides','Manquants']];
+    Object.entries(stats).forEach(([col,s]) => srows.push([col,s.mean,s.std,s.min,s.max,s.n,s.missing]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(srows), 'Statistiques');
+
+    const meta = [
+      ['Champ','Valeur'],
+      ['Fichier',cfg.exportName],['Type',cfg.label],['Unite',cfg.unit],
+      ['Lignes',d.length],['Colonnes',Object.keys(d[0]).length],
+      ['Bassin','Oueme a Bonou - Benin'],['Periode','1991-2020'],
+      ['Outil','HydroClim Analyzer - SMADH'],
+      ['Date',new Date().toLocaleDateString('fr-FR')]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), 'Metadonnees');
+    XLSX.writeFile(wb, cfg.exportName);
+  }
+
+  function importExportAll() {
+    Object.entries(window._importState.data).forEach(([key,d],i) => {
+      if(d) setTimeout(() => importExportFile(key), i * 700);
+    });
+  }
+
+  // Init
+  `;
+}
+
+
+// ============================================================
+// IMPORT / EXPORT EXCEL — FONCTIONS GLOBALES
+// ============================================================
+window._importState = {
+  activeTab: 'precip',
+  data: { precip:null, tmin:null, tmax:null, debit:null },
+  files: { precip:null, tmin:null, tmax:null, debit:null },
+};
+
+const FILE_CFG = {
+  precip:{ label:'Precipitations journalieres', unit:'mm', exportName:'Precipitations_25stations_1991_2020.xlsx', sheetName:'Precipitations', expectedCols:26 },
+  tmin:  { label:'Temperatures minimales Tmin', unit:'C',  exportName:'Tmin_4stations_1991_2020.xlsx', sheetName:'Tmin', expectedCols:5 },
+  tmax:  { label:'Temperatures maximales Tmax', unit:'C',  exportName:'Tmax_4stations_1991_2020.xlsx', sheetName:'Tmax', expectedCols:5 },
+  debit: { label:'Debits journaliers Bonou',    unit:'m3/s',exportName:'Debits_Bonou_1991_2020.xlsx', sheetName:'Debits', expectedCols:2 },
+};
+
+function importParseNum(val) {
+  if(val===null||val===undefined||val==='') return null;
+  const n = parseFloat(String(val).replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+
+function importComputeStats(data, cols) {
+  const res = {};
+  cols.forEach(col => {
+    const vals = data.map(r=>importParseNum(r[col])).filter(v=>v!==null);
+    if(!vals.length) return;
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+    res[col] = { mean:+mean.toFixed(3), std:+std.toFixed(3), min:+Math.min(...vals).toFixed(3), max:+Math.max(...vals).toFixed(3), n:vals.length, missing:data.length-vals.length };
+  });
+  return res;
+}
+
+function importUpdateProgress() {
+  const n = Object.values(window._importState.data).filter(Boolean).length;
+  const el = document.getElementById('import-progress');
+  const bar = document.getElementById('import-progress-bar');
+  const txt = document.getElementById('import-progress-text');
+  if(el) el.textContent = n + ' / 4';
+  if(bar) bar.style.width = (n*25) + '%';
+  if(txt) txt.textContent = n===4 ? 'Tous les fichiers charges - export disponible' : 'Chargez les 4 fichiers pour activer l export global';
+  Object.keys(FILE_CFG).forEach(key => {
+    const btn = document.getElementById('btn-export-'+key);
+    if(btn) {
+      const ok = !!window._importState.data[key];
+      btn.disabled = !ok;
+      btn.style.background = ok ? 'rgba(78,203,160,.1)' : '#0d2235';
+      btn.style.color = ok ? '#4ecba0' : '#4a6a5a';
+      btn.style.border = ok ? '1px solid rgba(78,203,160,.3)' : '1px solid #234055';
+      btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+    }
+  });
+  const btnAll = document.getElementById('btn-export-all');
+  if(btnAll) {
+    btnAll.disabled = n < 1;
+    btnAll.style.background = n >= 1 ? 'linear-gradient(135deg,#0f6e56,#0a9e7a)' : '#234055';
+    btnAll.style.color = n >= 1 ? '#fff' : '#4a6a5a';
+    btnAll.style.cursor = n >= 1 ? 'pointer' : 'not-allowed';
+  }
+}
+
+function importSetTab(key) {
+  window._importState.activeTab = key;
+  Object.keys(FILE_CFG).forEach(k => {
+    const t = document.getElementById('import-tab-'+k);
+    if(t) {
+      const isActive = k === key;
+      t.style.border = isActive ? '1px solid #4ecba0' : '1px solid #234055';
+      t.style.background = isActive ? 'rgba(78,203,160,.14)' : '#0d2235';
+      t.style.color = isActive ? '#4ecba0' : '#6a9080';
+    }
+  });
+  importRenderPanel();
+}
+
+function importRenderPanel() {
+  const key = window._importState.activeTab;
+  const cfg = FILE_CFG[key];
+  const d = window._importState.data[key];
+  const fname = window._importState.files[key];
+  const panel = document.getElementById('import-panel');
+  if(!panel) return;
+
+  const zoneStyle = d
+    ? 'border:2px solid #4ecba0;background:rgba(78,203,160,.06);'
+    : 'border:2px dashed #234055;background:#0d1b2a;';
+
+  let statsHtml = '';
+  let previewHtml = '';
+  let exportBtnHtml = '';
+
+  if(d) {
+    const cols = Object.keys(d[0]);
+    const valueCols = cols.filter(c=>!c.toLowerCase().includes('date'));
+    const stats = importComputeStats(d, valueCols);
+
+    previewHtml = '<div style="font-size:10px;color:#5a7a6a;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;">Apercu (5 lignes)</div>';
+    previewHtml += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    const previewCols = cols.slice(0,4);
+    previewHtml += '<thead><tr>' + previewCols.map(c=>'<th style="color:#6a9080;padding:4px 6px;text-align:left;border-bottom:1px solid #234055;white-space:nowrap;">'+c+'</th>').join('');
+    if(cols.length>4) previewHtml += '<th style="color:#6a9080;padding:4px 6px;">+' + (cols.length-4) + '...</th>';
+    previewHtml += '</tr></thead><tbody>';
+    d.slice(0,5).forEach(row => {
+      previewHtml += '<tr>' + previewCols.map(c=>'<td style="padding:4px 6px;border-bottom:1px solid #1a2f42;color:#c0d8d0;white-space:nowrap;">'+(row[c]??'-')+'</td>').join('');
+      if(cols.length>4) previewHtml += '<td style="padding:4px 6px;color:#4a6a5a;">...</td>';
+      previewHtml += '</tr>';
+    });
+    previewHtml += '</tbody></table></div>';
+
+    statsHtml = '<div style="font-size:10px;color:#5a7a6a;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;">Statistiques (' + cfg.unit + ')</div>';
+    statsHtml += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    statsHtml += '<thead><tr>' + ['Station','Moy.','Ec.','Min','Max','N'].map(h=>'<th style="color:#6a9080;padding:4px 6px;text-align:left;border-bottom:1px solid #234055;">'+h+'</th>').join('') + '</tr></thead><tbody>';
+    Object.entries(stats).forEach(([col,s]) => {
+      statsHtml += '<tr><td style="padding:4px 6px;color:#4ecba0;font-weight:600;border-bottom:1px solid #1a2f42;">'+col+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.mean+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.std+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.min+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.max+'</td><td style="padding:4px 6px;border-bottom:1px solid #1a2f42;">'+s.n+'</td></tr>';
+    });
+    statsHtml += '</tbody></table></div>';
+
+    exportBtnHtml = '<button onclick="importExportFile(\"' + key + '\")" style="width:100%;padding:10px;margin-top:12px;background:rgba(78,203,160,.1);color:#4ecba0;border:1px solid rgba(78,203,160,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📥 Exporter ' + cfg.label + '</button>';
+  }
+
+  panel.innerHTML = '<div class="card">' +
+    '<div class="card-title">' + cfg.label + '</div>' +
+    '<div style="font-size:11px;color:#6a9080;margin-bottom:10px;">' + cfg.unit + ' · Journalier</div>' +
+    '<div style="' + zoneStyle + 'border-radius:10px;padding:20px;text-align:center;cursor:pointer;position:relative;margin-bottom:12px;">' +
+      "<input type=\"file\" accept=\".xlsx,.xls,.csv\" onchange=\"importHandleFile(event,'" + key + "')\" style=\"position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;\" />" +
+      '<div style="font-size:28px;margin-bottom:6px;">' + (d?'✅':'📂') + '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:#8ab5a5;">' + (fname || 'Glisser ou cliquer pour uploader') + '</div>' +
+      '<div style="font-size:10px;color:#4a6a5a;margin-top:3px;">' + (d ? d.length.toLocaleString() + ' lignes - ' + Object.keys(d[0]).length + ' colonnes' : 'Formats: .xlsx .xls .csv') + '</div>' +
+      (d ? '<div style="font-size:11px;color:#4ecba0;font-weight:600;margin-top:6px;">Charge avec succes</div>' : '') +
+    '</div>' +
+    previewHtml + statsHtml + exportBtnHtml +
+  '</div>';
+}
+
+function importHandleFile(event, key) {
+  const file = event.target.files[0];
+  if(!file) return;
+  window._importState.files[key] = file.name;
+  window._importState.data[key] = null;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      if(typeof XLSX === 'undefined') {
+        alert('La librairie XLSX nest pas chargee.');
+        return;
+      }
+      const wb = XLSX.read(evt.target.result, { type:'binary', cellDates:true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { raw:false, dateNF:'DD/MM/YYYY' });
+      if(!json || !json.length) { alert('Fichier vide ou format non reconnu.'); return; }
+      window._importState.data[key] = json;
+      importUpdateProgress();
+      importSetTab(key);
+    } catch(err) {
+      alert('Erreur de lecture : ' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function importExportFile(key) {
+  const d = window._importState.data[key];
+  if(!d) { alert('Aucune donnee chargee pour ce fichier.'); return; }
+  if(typeof XLSX === 'undefined') { alert('XLSX non disponible.'); return; }
+
+  const cfg = FILE_CFG[key];
+  const standardized = d.map(row => {
+    const nr = {};
+    Object.entries(row).forEach(([k,v]) => {
+      const ck = k.trim();
+      if(ck.toLowerCase().includes('date')) { nr[ck] = v; }
+      else { const n = importParseNum(v); nr[ck] = n !== null ? n : v; }
+    });
+    return nr;
+  });
+
+  const cols = Object.keys(d[0]).filter(c=>!c.toLowerCase().includes('date'));
+  const stats = importComputeStats(d, cols);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standardized), cfg.sheetName);
+
+  const srows = [['Station','Moyenne','Ecart-type','Minimum','Maximum','N valides','Manquants']];
+  Object.entries(stats).forEach(([col,s]) => srows.push([col,s.mean,s.std,s.min,s.max,s.n,s.missing]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(srows), 'Statistiques');
+
+  const meta = [
+    ['Champ','Valeur'],
+    ['Fichier',cfg.exportName],['Type',cfg.label],['Unite',cfg.unit],
+    ['Lignes',d.length],['Colonnes',Object.keys(d[0]).length],
+    ['Bassin','Oueme a Bonou - Benin'],['Periode','1991-2020'],
+    ['Outil','HydroClim Analyzer - SMADH'],
+    ['Date',new Date().toLocaleDateString('fr-FR')]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), 'Metadonnees');
+  XLSX.writeFile(wb, cfg.exportName);
+}
+
+function importExportAll() {
+  Object.entries(window._importState.data).forEach(([key,d],i) => {
+    if(d) setTimeout(() => importExportFile(key), i * 700);
+  });
+}
+
+function importInitScreen() {
+  importSetTab('precip');
+  importUpdateProgress();
 }
 
 // ============================================================
@@ -1369,9 +2185,11 @@ function render() {
   };
   const fn = screenMap[state.screen];
   document.getElementById("app").innerHTML = fn ? fn() : screenAccueil();
+  if(state.screen === "import") setTimeout(importInitScreen, 50);
 }
 
 render();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
