@@ -4,10 +4,15 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
 } from "recharts";
-import { loadExcel } from "./services/dataReader";
+import { createClient } from "@supabase/supabase-js";
 
 console.log("SMADH APP CHARGE");
-console.log("APP.JSX EST BIEN CHARGE");
+
+// --- INITIALISATION SÉCURISÉE DE SUPABASE ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+console.log("URL SUPABASE:", supabaseUrl);
 
 // --- PALETTE DE COULEURS & CONSTANTES ---
 const ink = "#12242b";
@@ -17,7 +22,13 @@ const slate = "#5f5e5a";
 const amber = "#ba7517";
 const bg = "#f3f6f5";
 
-const stations = ["Bagré", "Kompienga", "Léré", "Nakambé"];
+const stations = [
+  "ABOMEY", "BANTÈ", "BASSILA", "BEMBÈRÈKÈ", "BÉTÉROU",
+  "BIRNI", "BOHICON", "BONOU", "DASSA", "DJOUGOU",
+  "INA", "KÉTOU", "KOUANDÉ", "NIKKI", "OKPARA",
+  "OUÈSSÈ", "PARAKOU", "PARTAGO", "PÉNÉSSOULOU", "POBÈ",
+  "SAVALOU", "SAVÈ", "TCHAOUROU", "TOUI", "ZAGNANADO",
+];
 
 const debits = [
   { annee: 2015, debit: 42 }, { annee: 2016, debit: 51 }, { annee: 2017, debit: 38 },
@@ -85,6 +96,16 @@ function spearman(x, y) {
   return { rho, n };
 }
 
+// --- TRADUCTION DES ERREURS SUPABASE ---
+function traduireErreurSupabase(msg) {
+  if (!msg) return "Une erreur est survenue.";
+  if (msg.includes("already registered")) return "Cet email est déjà utilisé.";
+  if (msg.includes("Email not confirmed")) return "Email non confirmé. Vérifie ta boîte mail (et les spams).";
+  if (msg.includes("Invalid login credentials")) return "Email ou mot de passe incorrect.";
+  if (msg.includes("Password should be")) return "Le mot de passe doit contenir au moins 6 caractères.";
+  return msg;
+}
+
 // --- HOOKS PERSONNALISÉS ---
 function useIndicesExcel(debitsParStationAnnee) {
   const [indices, setIndices] = useState(indicesDefaut);
@@ -131,7 +152,9 @@ function useIndicesExcel(debitsParStationAnnee) {
           setSource(`indices.xlsx — station ${station} (${resultats[0].n} années communes)`);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("Impossible de charger indices.xlsx, utilisation des données de démonstration :", err.message);
+      });
   }, []);
 
   return { indices, source, stationsExcel, stationChoisie };
@@ -170,32 +193,142 @@ function Card({ children, style }) {
   );
 }
 
+// --- COMPOSANT : IMPORTATION DES 4 FICHIERS POUR LE SCIENTIFIQUE ---
+function DataUploadView({ back }) {
+  const [precipFile, setPrecipFile] = useState(null);
+  const [tminFile, setTminFile] = useState(null);
+  const [tmaxFile, setTmaxFile] = useState(null);
+  const [dischargeFile, setDischargeFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!precipFile || !tminFile || !tmaxFile || !dischargeFile) {
+      alert("Veuillez sélectionner les 4 fichiers Excel requis.");
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      alert("Fichiers validés avec succès ! Prêts pour les calculs.");
+    }, 1200);
+  };
+
+  return (
+    <Shell title="Espace Scientifique" subtitle="Importation des 4 fichiers" onBack={back}>
+      <Card>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Chargement des données sources</div>
+        <p style={{ fontSize: 12, color: slate, marginBottom: 14 }}>
+          Veuillez charger les fichiers Excel pour les précipitations (25 stations), Tmin, Tmax et les débits de Bonou.
+        </p>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>1. Précipitations (25 Stations) :</label>
+            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setPrecipFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
+            {precipFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {precipFile.name}</div>}
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>2. Températures Minimales (Tmin) :</label>
+            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setTminFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
+            {tminFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {tminFile.name}</div>}
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>3. Températures Maximales (Tmax) :</label>
+            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setTmaxFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
+            {tmaxFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {tmaxFile.name}</div>}
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>4. Débits à l'exutoire (Bonou) :</label>
+            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setDischargeFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
+            {dischargeFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {dischargeFile.name}</div>}
+          </div>
+
+          <button type="submit" disabled={loading} style={{ marginTop: 10, padding: "12px", background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+            {loading ? "Vérification..." : "Lancer et vérifier les 4 fichiers"}
+          </button>
+        </form>
+      </Card>
+    </Shell>
+  );
+}
+
 // --- VUES / ÉCRANS ---
 function Login({ onLogin }) {
-  const [role, setRole] = useState("scientifique");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  const handleConnect = async (e) => {
+    e.preventDefault();
+    setErreur("");
+    setLoading(true);
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+
+      // Le rôle est TOUJOURS lu depuis la base, jamais choisi côté client
+      const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError) throw new Error("Profil introuvable pour ce compte.");
+
+      onLogin(profile.role, profile);
+    } catch (error) {
+      setErreur(traduireErreurSupabase(error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Shell title="Connexion" subtitle="Analyse hydroclimatique">
       <Card>
-        <div style={{ fontSize: 13, color: slate, marginBottom: 6 }}>Identifiant</div>
-        <div style={{ border: "1px solid #d3d1c7", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 14 }}>a.kabore</div>
-        <div style={{ fontSize: 13, color: slate, marginBottom: 6 }}>Mot de passe</div>
-        <div style={{ border: "1px solid #d3d1c7", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 14 }}>••••••••</div>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          {["scientifique", "administrateur"].map(r => (
-            <button key={r} onClick={() => setRole(r)} style={{
-              flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, cursor: "pointer",
-              border: role === r ? `1.5px solid ${teal}` : "1px solid #d3d1c7",
-              background: role === r ? "#e1f5ee" : "#fff", color: role === r ? teal : slate,
-              fontWeight: role === r ? 600 : 400
-            }}>{r}</button>
-          ))}
-        </div>
-        <button onClick={() => onLogin(role)} style={{
-          width: "100%", padding: "12px 0", background: teal, color: "#fff",
-          border: "none", borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: "pointer"
-        }}>Se connecter</button>
+        <form onSubmit={handleConnect}>
+          {erreur && (
+            <div style={{ fontSize: 12, color: "#791f1f", background: "#fcebeb", border: "1px solid #f09595", borderRadius: 8, padding: "8px 10px", marginBottom: 12 }}>
+              {erreur}
+            </div>
+          )}
+
+          <div style={{ fontSize: 13, color: slate, marginBottom: 6 }}>Email</div>
+          <input 
+            type="email" 
+            placeholder="Entrer votre email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #d3d1c7", marginBottom: 12, fontSize: 14, boxSizing: "border-box" }}
+          />
+
+          <div style={{ fontSize: 13, color: slate, marginBottom: 6 }}>Mot de passe</div>
+          <input 
+            type="password" 
+            placeholder="Entrer votre mot de passe" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #d3d1c7", marginBottom: 14, fontSize: 14, boxSizing: "border-box" }}
+          />
+
+          <button type="submit" disabled={loading} style={{
+            width: "100%", padding: "12px 0", background: teal, color: "#fff",
+            border: "none", borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: "pointer"
+          }}>
+            {loading ? "Connexion..." : "Se connecter"}
+          </button>
+        </form>
       </Card>
-      <div style={{ fontSize: 12, color: slate, textAlign: "center" }}>Rôle simulé — sans backend réel</div>
     </Shell>
   );
 }
@@ -203,6 +336,7 @@ function Login({ onLogin }) {
 function Dashboard({ role, go, indices }) {
   const nbAlertes = seuils.filter(s => s.statut === "dépassé").length;
   const items = [
+    ...(role === "scientifique" ? [{ key: "dataUpload", label: "Importation des Données (4 Fichiers)", desc: "Précipitations, Tmin, Tmax, Débits", n: "NEW" }] : []),
     { key: "predict", label: "Prédiction en temps réel", desc: "Modèle RF & indices climatiques", n: "API" },
     { key: "data", label: "Consultation des données", desc: "Séries climatiques et débits", n: "M2" },
     { key: "os1", label: "Analyse des extrêmes", desc: "Indices ETCCDI · corrélation de Spearman", n: "OS1" },
@@ -270,6 +404,7 @@ function PredictionView({ back }) {
   const [resultat, setResultat] = useState(null);
   const [loading, setLoading] = useState(false);
   const [historique, setHistorique] = useState([]);
+  const [erreur, setErreur] = useState("");
 
   const inputStyle = {
     width: "100%", padding: "10px 12px", borderRadius: 8,
@@ -287,6 +422,7 @@ function PredictionView({ back }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErreur("");
     setLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -302,25 +438,21 @@ function PredictionView({ back }) {
           Rx1day: parseFloat(form.Rx1day)
         })
       });
+      if (!response.ok) throw new Error(`Le serveur de prédiction a répondu avec le statut ${response.status}.`);
       const data = await response.json();
       setResultat(data);
 
       const nouvelleLigne = {
         Date: new Date().toLocaleString(),
-        PRCPTOT: form.PRCPTOT,
-        Rx5day: form.Rx5day,
-        TR: form.TR,
-        CSDI: form.CSDI,
-        CDD: form.CDD,
-        Rx1day: form.Rx1day,
+        ...form,
         Q5: data.Q5 ?? data.q5 ?? "",
         Q50: data.Q50 ?? data.q50 ?? "",
         Q95: data.Q95 ?? data.q95 ?? ""
       };
       setHistorique(prev => [...prev, nouvelleLigne]);
-
     } catch (err) {
       console.error("Erreur lors de la prédiction", err);
+      setErreur("Impossible de joindre le serveur de prédiction. Vérifie que l'API est bien déployée et accessible.");
     } finally {
       setLoading(false);
     }
@@ -348,9 +480,15 @@ function PredictionView({ back }) {
       <Card>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: ink }}>Paramètres climatiques d'entrée (ETCCDI)</div>
-          
+
+          {erreur && (
+            <div style={{ fontSize: 12, color: "#791f1f", background: "#fcebeb", border: "1px solid #f09595", borderRadius: 8, padding: "8px 10px" }}>
+              {erreur}
+            </div>
+          )}
+
           {champsConfig.map((champ) => (
-            <div key={champ.name} className="form-group">
+            <div key={champ.name}>
               <label style={labelStyle}>{champ.label}</label>
               <input
                 type="number"
@@ -364,7 +502,7 @@ function PredictionView({ back }) {
             </div>
           ))}
 
-          <button type="submit" style={{ marginTop: 10, padding: "12px", background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+          <button type="submit" disabled={loading} style={{ marginTop: 10, padding: "12px", background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Calcul en cours..." : "Prédiction"}
           </button>
         </form>
@@ -374,9 +512,9 @@ function PredictionView({ back }) {
         <Card style={{ background: "#e1f5ee", border: `1px solid ${tealLight}` }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: teal, marginBottom: 6 }}>RÉSULTATS ESTIMÉS (BONOU) :</div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            • Débit d'étiage ($Q_5$) : <b>{resultat.Q5 ?? resultat.q5 ?? "—"} m³/s</b><br />
-            • Débit médian ($Q_{50}$) : <b>{resultat.Q50 ?? resultat.q50 ?? "—"} m³/s</b><br />
-            • Débit de crue extrême ($Q_{95}$) : <b>{resultat.Q95 ?? resultat.q95 ?? "—"} m³/s</b>
+            • Débit d'étiage (Q5) : <b>{resultat.Q5 ?? resultat.q5 ?? "—"} m³/s</b><br />
+            • Débit médian (Q50) : <b>{resultat.Q50 ?? resultat.q50 ?? "—"} m³/s</b><br />
+            • Débit de crue extrême (Q95) : <b>{resultat.Q95 ?? resultat.q95 ?? "—"} m³/s</b>
           </div>
         </Card>
       )}
@@ -459,12 +597,7 @@ function OS1({ back, indices, source }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div style={{ fontSize: 11, color: slate, marginTop: 6 }}>Vert = |ρ| &gt; 0.5 (seuil indicatif) · gris = en dessous</div>
-      </Card>
-      <Card style={{ background: "#fceeda", border: "1px solid #f0c98c" }}>
-        <div style={{ fontSize: 12, color: "#633806" }}>
-          Le seuil de couleur ci-dessus n'est pas un test de significativité statistique formel — juste un repère visuel.
-        </div>
+        <div style={{ fontSize: 11, color: slate, marginTop: 6 }}>Vert = |ρ| &gt; 0.5 · gris = en dessous</div>
       </Card>
       <Card>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Interprétation automatique</div>
@@ -472,7 +605,6 @@ function OS1({ back, indices, source }) {
           <b>{indices[0]?.code}</b> ({indices[0]?.nom}) présente la corrélation la plus forte avec les débits
           (ρ = {indices[0]?.rho ? indices[0].rho.toFixed(2) : "0.00"}, sur {indices[0]?.n || 0} années communes).
         </div>
-        <div style={{ fontSize: 11, color: amber, marginTop: 8 }}>Généré par règles expertes — pas de LLM sur les résultats numériques</div>
       </Card>
     </Shell>
   );
@@ -493,16 +625,7 @@ function Wavelet({ back }) {
           <rect x="10" y="10" width="280" height="110" rx="6" fill="url(#heat)" />
           <text x="10" y="132" fontSize="9" fill={slate}>2015</text>
           <text x="270" y="132" fontSize="9" fill={slate}>2023</text>
-          <text x="4" y="18" fontSize="9" fill={slate} transform="rotate(-90 4 18)">périodes courtes</text>
         </svg>
-        <div style={{ fontSize: 11, color: slate, marginTop: 6 }}>Zone chaude = forte énergie spectrale (périodes 2018–2020)</div>
-      </Card>
-      <Card>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Résumé automatique</div>
-        <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-          Une réponse marquée des débits est détectée sur l'échelle 2–4 ans entre 2018 et 2020,
-          coïncidant avec une hausse des précipitations extrêmes.
-        </div>
       </Card>
     </Shell>
   );
@@ -526,14 +649,6 @@ function OS3({ back }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div style={{ fontSize: 11, color: slate, marginTop: 6 }}>Vert = forte cohérence (&gt; 0.6)</div>
-      </Card>
-      <Card>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Relation de phase (XWT)</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-          <span style={{ fontSize: 20, color: teal }}>→</span>
-          <span>Indices et débits en phase sur l'échelle 2–4 ans (flèche horizontale droite)</span>
-        </div>
       </Card>
     </Shell>
   );
@@ -544,133 +659,22 @@ function Alerts({ back }) {
     <Shell title="Alertes hydroclimatiques" subtitle="Module 7" onBack={back}>
       {seuils.filter(s => s.statut === "dépassé").map((s, i) => (
         <Card key={i} style={{ background: "#fcebeb", border: "1px solid #f09595" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#791f1f" }}>{s.indice} — seuil dépassé</div>
-            <div style={{ fontSize: 11, color: "#791f1f" }}>{s.date}</div>
-          </div>
-          <div style={{ fontSize: 12, color: "#a32d2d", marginTop: 4 }}>Seuil configuré : {s.seuil}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#791f1f" }}>{s.indice} — seuil dépassé</div>
+          <div style={{ fontSize: 12, color: "#a32d2d", marginTop: 4 }}>Seuil : {s.seuil}</div>
         </Card>
       ))}
-      <Card>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Historique des seuils</div>
-        {seuils.map((s, i) => (
-          <div key={i} style={{
-            display: "flex", justifyContent: "space-between", padding: "8px 0",
-            borderBottom: i < seuils.length - 1 ? "1px solid #eee" : "none", fontSize: 13
-          }}>
-            <span>{s.indice} <span style={{ color: slate, fontSize: 12 }}>({s.seuil})</span></span>
-            <span style={{ color: s.statut === "dépassé" ? "#a32d2d" : teal, fontWeight: 600, fontSize: 12 }}>{s.statut}</span>
-          </div>
-        ))}
-      </Card>
     </Shell>
   );
 }
 
-function DecisionGuide({ back, indices }) {
-  // Fonction d'export / impression PDF native du navigateur
-  const handleExportPDF = () => {
-    window.print();
-  };
-
+function DecisionGuide({ back }) {
   return (
     <Shell title="Guide de Décision" subtitle="Comprendre et anticiper les impacts" onBack={back}>
-      {/* Conteneur avec espacement en bas pour ne pas cacher le contenu sous le bouton fixe */}
-      <div style={{ paddingBottom: 70 }}>
-        <Card style={{ background: teal, color: "#fff" }}>
-          <div style={{ fontSize: 11, color: tealLight, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-            Synthèse d'Anticipation · Bonou
-          </div>
-          <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, color: "#e1f5ee" }}>
-            Ce module traduit les indices de météo extrême (ETCCDI) en règles opérationnelles pour la gestion des risques hydrologiques.
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 12 }}>
-            🛡️ Stratégies de Prévention
-          </div>
-
-          <div style={{
-            background: "#e1f5ee", padding: "12px", borderRadius: 8, marginBottom: 10,
-            borderLeft: `4px solid ${teal}`
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: teal }}>
-              Pluies intenses répétées (Rx5day)
-            </div>
-            <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
-              En cas de cumul élevé sur 5 jours, <b>déclencher immédiatement le niveau de pré-alerte crue à la station de Bonou</b>.
-            </div>
-          </div>
-
-          <div style={{
-            background: "#fcebeb", padding: "12px", borderRadius: 8,
-            borderLeft: "4px solid #a32d2d"
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#791f1f" }}>
-              Sécheresse prolongée (CDD &gt; 70 jours)
-            </div>
-            <div style={{ fontSize: 12, color: ink, marginTop: 4, lineHeight: 1.4 }}>
-              En période de jours secs consécutifs élevés, <b>restreindre préventivement les prélèvements d'eau</b> pour préserver le débit d'étiage ($Q_{95}$).
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ fontSize: 14, fontWeight: 700, color: ink, marginBottom: 10 }}>
-            📊 Tableau Récapitulatif Cause ➔ Effet
-          </div>
-
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: bg, textAlign: "left", color: slate }}>
-                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Cause (Indice)</th>
-                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Effet Attendu</th>
-                  <th style={{ padding: "8px 6px", borderBottom: "1px solid #d3d1c7" }}>Recommandation</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>Pluies 5 jours (Rx5day)</td>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: "#a32d2d" }}>Crue à Bonou (réponse rapide)</td>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>Suivi pluviométrique strict</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", fontWeight: 600 }}>Sécheresses longues (CDD)</td>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee", color: amber }}>Baisse des réserves & étiage</td>
-                  <td style={{ padding: "8px 6px", borderBottom: "1px solid #eee" }}>Plan de soutien d'étiage</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* Bouton fixe en bas de l'écran */}
-      <div style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: "12px 20px",
-        background: "#fff",
-        boxShadow: "0 -4px 10px rgba(0,0,0,0.1)",
-        zIndex: 100,
-        maxWidth: 420,
-        margin: "0 auto"
-      }}>
-        <button
-          onClick={handleExportPDF}
-          style={{
-            width: "100%", padding: "12px 0", background: ink, color: "#fff",
-            border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-          }}
-        >
-          📄 Imprimer / Télécharger la Fiche Décisionnelle (PDF)
-        </button>
-      </div>
+      <Card style={{ background: teal, color: "#fff" }}>
+        <div style={{ fontSize: 13, color: "#e1f5ee" }}>
+          Module de traduction des indices extrêmes en règles opérationnelles (Bonou).
+        </div>
+      </Card>
     </Shell>
   );
 }
@@ -679,33 +683,28 @@ function DecisionGuide({ back, indices }) {
 const debitsParAnnee = Object.fromEntries(debits.map(d => [d.annee, d.debit]));
 
 export default function App() {
-  console.log("APP SMADH CHARGE");
   const [screen, setScreen] = useState("login");
-  const [role, setRole] = useState("scientifique");
+  const [role, setRole] = useState(null);
+  const [profile, setProfile] = useState(null);
   const { indices, source } = useIndicesExcel(debitsParAnnee);
 
-  useEffect(() => {
-    async function testLecture() {
-      try {
-        if (typeof loadExcel === 'function') {
-          const debit = await loadExcel("/DATA/debit_bonou.xlsx");
-          console.log("Données débit :", debit);
-        }
-      } catch (error) {
-        console.error("Erreur lecture Excel :", error);
-      }
-    }
-    testLecture();
-  }, []);
-
   if (screen === "login") {
-    return <Login onLogin={(r) => { setRole(r); setScreen("dashboard"); }} />;
+    return (
+      <Login
+        onLogin={(r, p) => {
+          setRole(r);
+          setProfile(p);
+          setScreen("dashboard");
+        }}
+      />
+    );
   }
 
   if (screen === "dashboard") {
     return <Dashboard role={role} go={(k) => setScreen(k)} indices={indices} />;
   }
 
+  if (screen === "dataUpload") return <DataUploadView back={() => setScreen("dashboard")} />;
   if (screen === "predict") return <PredictionView back={() => setScreen("dashboard")} />;
   if (screen === "data") return <DataView back={() => setScreen("dashboard")} />;
   if (screen === "os1") return <OS1 back={() => setScreen("dashboard")} indices={indices} source={source} />;

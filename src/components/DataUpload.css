@@ -1,0 +1,111 @@
+.upload-container {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px;
+  width: 100%;
+  max-width: 800px;
+  margin: 20px auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.upload-container h2 {
+  margin-bottom: 8px;
+  color: var(--text-main, #0f172a);
+  font-size: 20px;
+}
+
+.upload-container p {
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-main, #0f172a);
+}
+
+.form-group input[type="file"] {
+  padding: 10px;
+  border: 1px dashed var(--border-strong, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-subtle, #f1f5f9);
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.submit-btn {
+  margin-top: 10px;
+  background-color: var(--primary, #0284c7);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-hover, #0369a1);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.file-info {
+  font-size: 12px;
+  color: var(--success, #10b981);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.template-section {
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  background: var(--bg-subtle, #f1f5f9);
+  padding: 10px;
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-btn {
+  background: none;
+  border: 1px solid var(--primary, #0284c7);
+  color: var(--primary, #0284c7);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.template-btn:hover {
+  background: var(--primary-subtle, #e0f2fe);
+}
