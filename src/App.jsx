@@ -195,67 +195,241 @@ function Card({ children, style }) {
 
 // --- COMPOSANT : IMPORTATION DES 4 FICHIERS POUR LE SCIENTIFIQUE ---
 function DataUploadView({ back }) {
-  const [precipFile, setPrecipFile] = useState(null);
-  const [tminFile, setTminFile] = useState(null);
-  const [tmaxFile, setTmaxFile] = useState(null);
-  const [dischargeFile, setDischargeFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = React.useState('precip');
+  const [files, setFiles] = React.useState({ precip:null, tmin:null, tmax:null, debit:null });
+  const [data, setData] = React.useState({ precip:null, tmin:null, tmax:null, debit:null });
+  const [errors, setErrors] = React.useState({ precip:null, tmin:null, tmax:null, debit:null });
+  const [validation, setValidation] = React.useState({ precip:null, tmin:null, tmax:null, debit:null });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!precipFile || !tminFile || !tmaxFile || !dischargeFile) {
-      alert("Veuillez sélectionner les 4 fichiers Excel requis.");
-      return;
-    }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      alert("Fichiers validés avec succès ! Prêts pour les calculs.");
-    }, 1200);
+  const FILE_CONFIGS = {
+    precip:{ label:'Precipitations journalieres', icon:'🌧', unit:'mm', exportName:'Precipitations_25stations_1991_2020.xlsx', sheetName:'Precipitations', expectedCols:26 },
+    tmin:  { label:'Temperatures minimales (Tmin)', icon:'❄️', unit:'C', exportName:'Tmin_4stations_1991_2020.xlsx', sheetName:'Tmin', expectedCols:5 },
+    tmax:  { label:'Temperatures maximales (Tmax)', icon:'🌡️', unit:'C', exportName:'Tmax_4stations_1991_2020.xlsx', sheetName:'Tmax', expectedCols:5 },
+    debit: { label:'Debits journaliers (Bonou)', icon:'💧', unit:'m3/s', exportName:'Debits_Bonou_1991_2020.xlsx', sheetName:'Debits', expectedCols:2 },
   };
 
+  function parseNum(val) {
+    if (val === null || val === undefined || val === '') return null;
+    const n = parseFloat(String(val).replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+
+  function computeStats(d, cols) {
+    const res = {};
+    cols.forEach(col => {
+      const vals = d.map(r => parseNum(r[col])).filter(v => v !== null);
+      if (!vals.length) return;
+      const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+      res[col] = { mean:+mean.toFixed(3), std:+std.toFixed(3), min:+Math.min(...vals).toFixed(3), max:+Math.max(...vals).toFixed(3), n:vals.length, missing:d.length-vals.length };
+    });
+    return res;
+  }
+
+  function handleFile(e, key) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFiles(prev=>({...prev,[key]:file.name}));
+    setErrors(prev=>({...prev,[key]:null}));
+    setData(prev=>({...prev,[key]:null}));
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const wb = XLSX.read(evt.target.result, {type:'binary', cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws, {raw:false, dateNF:'DD/MM/YYYY'});
+        if (!json || !json.length) { setErrors(prev=>({...prev,[key]:'Fichier vide.'})); return; }
+        const cols = Object.keys(json[0]);
+        const valueCols = cols.filter(c=>!c.toLowerCase().includes('date'));
+        const warns = [];
+        const cfg = FILE_CONFIGS[key];
+        if (json.length < 100) warns.push(`${json.length} lignes (attendu ~10957).`);
+        const missing = json.reduce((acc,row)=>acc+valueCols.filter(c=>parseNum(row[c])===null).length,0);
+        if (missing > 0) warns.push(`${missing} valeur(s) manquante(s).`);
+        if (valueCols.length !== cfg.expectedCols-1) warns.push(`${valueCols.length} colonne(s) (attendu ${cfg.expectedCols-1}).`);
+        setValidation(prev=>({...prev,[key]:{warnings:warns}}));
+        setData(prev=>({...prev,[key]:json}));
+      } catch(err) {
+        setErrors(prev=>({...prev,[key]:'Erreur: '+err.message}));
+      }
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function exportFile(key) {
+    const d = data[key];
+    if (!d) return;
+    const cfg = FILE_CONFIGS[key];
+    const standardized = d.map(row=>{
+      const nr={};
+      Object.entries(row).forEach(([k,v])=>{
+        const ck=k.trim();
+        if(ck.toLowerCase().includes('date')) nr[ck]=v;
+        else { const n=parseNum(v); nr[ck]=n!==null?n:v; }
+      });
+      return nr;
+    });
+    const cols = Object.keys(d[0]).filter(c=>!c.toLowerCase().includes('date'));
+    const stats = computeStats(d, cols);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(standardized), cfg.sheetName);
+    const srows = [['Station','Moyenne','Ecart-type','Minimum','Maximum','N valides','Manquants']];
+    Object.entries(stats).forEach(([col,s])=>srows.push([col,s.mean,s.std,s.min,s.max,s.n,s.missing]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(srows), 'Statistiques');
+    const meta = [['Champ','Valeur'],['Fichier',cfg.exportName],['Type',cfg.label],['Unite',cfg.unit],['Lignes',d.length],['Colonnes',Object.keys(d[0]).length],['Bassin','Oueme a Bonou - Benin'],['Periode','1991-2020'],['Outil','HydroClim Analyzer - SMADH'],['Date',new Date().toLocaleDateString('fr-FR')]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), 'Metadonnees');
+    XLSX.writeFile(wb, cfg.exportName);
+  }
+
+  const progress = Object.values(data).filter(Boolean).length;
+  const cfg = FILE_CONFIGS[activeTab];
+  const d = data[activeTab];
+  const err = errors[activeTab];
+  const v = validation[activeTab];
+  const cols = d ? Object.keys(d[0]) : [];
+  const valueCols = cols.filter(c=>!c.toLowerCase().includes('date'));
+
   return (
-    <Shell title="Espace Scientifique" subtitle="Importation des 4 fichiers" onBack={back}>
+    <Shell title="Gestion des donnees" subtitle="Upload - Validation - Export Excel" onBack={back}>
       <Card>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Chargement des données sources</div>
-        <p style={{ fontSize: 12, color: slate, marginBottom: 14 }}>
-          Veuillez charger les fichiers Excel pour les précipitations (25 stations), Tmin, Tmax et les débits de Bonou.
-        </p>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          <div style={{fontSize:13,fontWeight:600}}>Progression</div>
+          <span style={{fontSize:13,color:teal,fontWeight:700}}>{progress} / 4</span>
+        </div>
+        <div style={{height:6,background:'#e4e2d9',borderRadius:4,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${progress*25}%`,background:teal,borderRadius:4,transition:'width .4s'}}/>
+        </div>
+        <div style={{fontSize:11,color:slate,marginTop:6}}>
+          {progress===4 ? '✓ Tous les fichiers charges - export disponible' : 'Chargez les 4 fichiers pour activer l export global'}
+        </div>
+      </Card>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>1. Précipitations (25 Stations) :</label>
-            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setPrecipFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
-            {precipFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {precipFile.name}</div>}
+      <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+        {Object.entries(FILE_CONFIGS).map(([key,c])=>(
+          <div key={key} onClick={()=>setActiveTab(key)} style={{
+            flex:1, minWidth:60, padding:'8px 4px', borderRadius:8,
+            fontSize:11, fontWeight:600, cursor:'pointer', textAlign:'center',
+            border: activeTab===key?`1px solid ${teal}`:'1px solid #d3d1c7',
+            background: activeTab===key?'#e1f5ee':'#fff',
+            color: activeTab===key?teal:slate,
+          }}>
+            {c.icon} {key.toUpperCase()}{data[key]?' ✓':errors[key]?' !':''}
           </div>
+        ))}
+      </div>
 
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>2. Températures Minimales (Tmin) :</label>
-            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setTminFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
-            {tminFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {tminFile.name}</div>}
+      <Card>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>{cfg.icon} {cfg.label}</div>
+        <div style={{fontSize:11,color:slate,marginBottom:12}}>{cfg.description || cfg.unit}</div>
+
+        <div style={{
+          border:`2px ${d?`solid ${teal}`:err?'solid #f09595':'dashed #d3d1c7'}`,
+          borderRadius:10, padding:20, textAlign:'center', cursor:'pointer',
+          background:d?'#f0faf6':err?'#fcebeb':'#fafaf8',
+          position:'relative', marginBottom:12,
+        }}>
+          <input type="file" accept=".xlsx,.xls,.csv"
+            style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}
+            onChange={e=>handleFile(e,activeTab)} />
+          <div style={{fontSize:28,marginBottom:6}}>{d?'✅':err?'❌':'📂'}</div>
+          <div style={{fontSize:12,fontWeight:600,color:slate}}>
+            {files[activeTab] || 'Glisser ou cliquer pour uploader'}
           </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>3. Températures Maximales (Tmax) :</label>
-            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setTmaxFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
-            {tmaxFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {tmaxFile.name}</div>}
+          <div style={{fontSize:10,color:'#9e9c94',marginTop:3}}>
+            {d?`${d.length.toLocaleString()} lignes - ${cols.length} colonnes`:'Formats: .xlsx .xls .csv'}
           </div>
+          {d && <div style={{fontSize:11,color:teal,fontWeight:600,marginTop:6}}>Charge avec succes ✓</div>}
+          {err && <div style={{fontSize:11,color:'#791f1f',fontWeight:600,marginTop:6}}>{err}</div>}
+        </div>
 
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: slate }}>4. Débits à l'exutoire (Bonou) :</label>
-            <input type="file" accept=".xlsx, .xls, .csv" onChange={(e) => setDischargeFile(e.target.files[0])} style={{ width: "100%", marginTop: 4, fontSize: 12 }} />
-            {dischargeFile && <div style={{ fontSize: 11, color: teal, marginTop: 2 }}>✓ {dischargeFile.name}</div>}
+        {v && v.warnings.length > 0 && (
+          <div style={{background:'#fff8e6',borderLeft:`3px solid ${amber}`,borderRadius:'0 8px 8px 0',padding:'8px 12px',fontSize:11,marginBottom:10}}>
+            {v.warnings.map((w,i)=><div key={i}>⚠️ {w}</div>)}
           </div>
+        )}
+        {d && !err && v && v.warnings.length===0 && (
+          <div style={{background:'#f0faf6',borderLeft:`3px solid ${teal}`,borderRadius:'0 8px 8px 0',padding:'8px 12px',fontSize:11,marginBottom:10}}>
+            ✓ Format valide — {d.length.toLocaleString()} lignes, {valueCols.length} station(s).
+          </div>
+        )}
 
-          <button type="submit" disabled={loading} style={{ marginTop: 10, padding: "12px", background: teal, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
-            {loading ? "Vérification..." : "Lancer et vérifier les 4 fichiers"}
+        {d && (
+          <>
+            <div style={{fontSize:10,color:slate,textTransform:'uppercase',letterSpacing:'.06em',margin:'10px 0 4px'}}>Apercu (5 lignes)</div>
+            <div style={{overflowX:'auto',borderRadius:8}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                <thead>
+                  <tr>{cols.slice(0,4).map(c=><th key={c} style={{color:slate,padding:'4px 6px',textAlign:'left',borderBottom:'1px solid #e4e2d9',whiteSpace:'nowrap'}}>{c}</th>)}
+                  {cols.length>4&&<th style={{color:slate,padding:'4px 6px'}}>+{cols.length-4}...</th>}</tr>
+                </thead>
+                <tbody>
+                  {d.slice(0,5).map((row,i)=>(
+                    <tr key={i}>{cols.slice(0,4).map(c=><td key={c} style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4',whiteSpace:'nowrap'}}>{row[c]??'-'}</td>)}
+                    {cols.length>4&&<td style={{padding:'4px 6px'}}>...</td>}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{fontSize:10,color:slate,textTransform:'uppercase',letterSpacing:'.06em',margin:'10px 0 4px'}}>Statistiques ({cfg.unit})</div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                <thead>
+                  <tr>{['Station','Moy.','Ec.-t.','Min','Max','N'].map(h=><th key={h} style={{color:slate,padding:'4px 6px',textAlign:'left',borderBottom:'1px solid #e4e2d9',whiteSpace:'nowrap'}}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {Object.entries(computeStats(d,valueCols)).map(([col,s])=>(
+                    <tr key={col}>
+                      <td style={{padding:'4px 6px',color:teal,fontWeight:600,borderBottom:'1px solid #f0ede4'}}>{col}</td>
+                      <td style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4'}}>{s.mean}</td>
+                      <td style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4'}}>{s.std}</td>
+                      <td style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4'}}>{s.min}</td>
+                      <td style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4'}}>{s.max}</td>
+                      <td style={{padding:'4px 6px',borderBottom:'1px solid #f0ede4'}}>{s.n}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button onClick={()=>exportFile(activeTab)} style={{
+              width:'100%',padding:'10px',marginTop:12,
+              background:'#e1f5ee',color:teal,border:`1px solid ${teal}`,
+              borderRadius:8,fontWeight:600,fontSize:12,cursor:'pointer'
+            }}>
+              📥 Exporter {cfg.label}
+            </button>
+          </>
+        )}
+      </Card>
+
+      <Card>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Export global</div>
+        {Object.entries(FILE_CONFIGS).map(([key,c])=>(
+          <button key={key} disabled={!data[key]} onClick={()=>data[key]&&exportFile(key)} style={{
+            width:'100%',padding:'10px',marginBottom:8,
+            background:data[key]?'#e1f5ee':'#f5f4f0',
+            color:data[key]?teal:slate,
+            border:`1px solid ${data[key]?teal:'#d3d1c7'}`,
+            borderRadius:8,fontWeight:600,fontSize:12,
+            cursor:data[key]?'pointer':'not-allowed'
+          }}>
+            {c.icon} Exporter {c.label}
           </button>
-        </form>
+        ))}
+        <button disabled={progress<1} onClick={()=>Object.entries(data).forEach(([k,d],i)=>{if(d)setTimeout(()=>exportFile(k),i*600);})} style={{
+          width:'100%',padding:'12px',
+          background:progress>=1?teal:'#e4e2d9',
+          color:progress>=1?'#fff':slate,
+          border:'none',borderRadius:8,fontWeight:600,fontSize:13,
+          cursor:progress>=1?'pointer':'not-allowed'
+        }}>
+          📦 Exporter les {progress} fichier(s) charge(s)
+        </button>
       </Card>
     </Shell>
   );
 }
-
 // --- VUES / ÉCRANS ---
 function Login({ onLogin }) {
   const [email, setEmail] = useState("");
